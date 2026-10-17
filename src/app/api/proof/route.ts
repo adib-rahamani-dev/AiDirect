@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { COOKIE, requireOperator, requireOrigin } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { decrypt, encrypt } from '@/lib/crypto';
+import { decrypt, encrypt, hash } from '@/lib/crypto';
 import { automaticSending, baseUrl, provider, realSending } from '@/lib/config';
 import { metaAdapter, MetaError, subscribe } from '@/lib/meta';
 import { simulatedAdapter, SIM_ACCOUNT, SIM_MEDIA, simulationComment } from '@/lib/simulated';
@@ -101,6 +101,9 @@ export async function POST(request: Request) {
     const input = JSON.parse(raw);
     switch (input.action) {
       case 'logout':
+        await db.operatorSession.deleteMany({
+          where: { tokenHash: hash((await cookies()).get(COOKIE)?.value ?? '') },
+        });
         (await cookies()).delete(COOKIE);
         break;
       case 'media': {

@@ -1,92 +1,111 @@
 generator client {
   provider = "prisma-client"
-  output = "../src/generated/prisma"
+  output   = "../src/generated/prisma"
 }
+
 datasource db {
   provider = "postgresql"
 }
+
 // Phase 2: single operator proof. Customer accounts/tenancy start after real proof.
 model ProofConnection {
-  id String @id @default("proof")
-  accountId String @unique
-  appScopedId String
-  username String
-  tokenCipher String
-  expiresAt DateTime
-  issuedAt DateTime @default(now())
+  id                  String   @id @default("proof")
+  accountId           String   @unique
+  appScopedId         String
+  username            String
+  tokenCipher         String
+  expiresAt           DateTime
+  issuedAt            DateTime @default(now())
   acceptCommentsSince DateTime @default(now())
-  status String @default("connected")
-  subscribed Boolean @default(false)
-  nextSendAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status              String   @default("connected")
+  subscribed          Boolean  @default(false)
+  nextSendAt          DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
+
 model ProofRule {
-  id String @id @default("proof")
+  id        String   @id @default("proof")
   accountId String
-  mediaId String
-  keyword String
+  mediaId   String
+  keyword   String
   replyText String
-  link String
-  enabled Boolean @default(false)
+  link      String
+  enabled   Boolean  @default(false)
   updatedAt DateTime @updatedAt
 }
+
 model CommentEvent {
-  id String @id @default(cuid())
-  accountId String
-  commentId String
-  mediaId String
-  source String
-  matched Boolean
-  receivedAt DateTime @default(now())
+  id         String     @id @default(cuid())
+  accountId  String
+  commentId  String
+  mediaId    String
+  source     String
+  matched    Boolean
+  receivedAt DateTime   @default(now())
   deliveries Delivery[]
+
   @@unique([accountId, commentId, source])
 }
+
 model Delivery {
-  id String @id @default(cuid())
-  eventId String
-  event CommentEvent @relation(fields:[eventId],references:[id],onDelete:Cascade)
-  accountId String
-  commentId String
-  mediaId String
-  provider String
-  source String
-  replyCipher String
-  status String @default("pending")
-  attempts Int @default(0)
-  nextAttemptAt DateTime @default(now())
-  leaseUntil DateTime?
-  leaseToken String?
-  messageId String?
-  errorKind String?
-  errorCode Int?
-  errorSubcode Int?
-  traceId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  observedAt DateTime?
+  id            String       @id @default(cuid())
+  eventId       String
+  event         CommentEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  accountId     String
+  commentId     String
+  mediaId       String
+  provider      String
+  source        String
+  replyCipher   String
+  status        String       @default("pending")
+  attempts      Int          @default(0)
+  nextAttemptAt DateTime     @default(now())
+  leaseUntil    DateTime?
+  leaseToken    String?
+  messageId     String?
+  errorKind     String?
+  errorCode     Int?
+  errorSubcode  Int?
+  traceId       String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  observedAt    DateTime?
+
   // Global per account/comment/provider, survives disconnect and reconnect.
   @@unique([accountId, commentId, provider])
   @@index([status, nextAttemptAt])
 }
+
 model OAuthAttempt {
-  stateHash String @id
+  stateHash  String   @id
   inviteHash String?
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
 }
+
 model ConnectionInvite {
-  tokenHash String @id
+  tokenHash String    @id
   expiresAt DateTime
   claimedAt DateTime?
-  usedAt DateTime?
-  createdAt DateTime @default(now())
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 }
+
 model ProofLoginGuard {
-  id String @id
+  id            String   @id
   nextAttemptAt DateTime
 }
+
+model OperatorSession {
+  tokenHash String   @id
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
 model WorkerState {
-  id String @id
+  id         String   @id
   lastSeenAt DateTime
-  provider String
+  provider   String
 }

@@ -1,6 +1,10 @@
 .git/
 .agents/
 .local/
+.local
+.local/**
+.vercel
+.vercel/**
 .env
 .env.*
 !.env.example

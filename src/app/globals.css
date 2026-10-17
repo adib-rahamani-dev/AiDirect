@@ -4,6 +4,12 @@
   display: none !important;
 }
 @media (max-width: 760px) {
+  .auth-story {
+    order: 2;
+  }
+  .login-card {
+    order: 1;
+  }
   .mobile-logout {
     display: inline-flex !important;
     font-size: 10px;

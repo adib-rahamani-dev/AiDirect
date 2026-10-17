@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { COOKIE, newSession, requireOrigin } from '@/lib/auth';
 import { baseUrl, required } from '@/lib/config';
-import { equal } from '@/lib/crypto';
+import { equal, hash } from '@/lib/crypto';
 import { db } from '@/lib/db';
 import { verifyPassword } from '@/lib/password';
 import { InputError, readJson } from '@/lib/http';
@@ -29,7 +29,12 @@ export async function POST(request: Request) {
       authorized = equal(secret, required('PROOF_ADMIN_SECRET'));
     }
     if (!authorized) return Response.json({ error: 'unauthorized' }, { status: 401 });
-    (await cookies()).set(COOKIE, newSession(), {
+    const session = newSession();
+    await db.operatorSession.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+    await db.operatorSession.create({
+      data: { tokenHash: hash(session), expiresAt: new Date(Number(session.split('.')[0])) },
+    });
+    (await cookies()).set(COOKIE, session, {
       httpOnly: true,
       secure: baseUrl().startsWith('https://'),
       sameSite: 'lax',

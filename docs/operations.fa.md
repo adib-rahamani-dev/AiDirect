@@ -1,6 +1,6 @@
 # عملیات، استقرار و کارهای لازم قبل از انتشار
 
-مرحلهٔ فعلی: ابزار آزمایش تک‌اپراتور؛ **اجازه/آمادگی انتشار عمومی SaaS ندارد**. هیچ سرویس پولی خریداری یا deployment عمومی انجام نشده است. قیمت و شرایط میزبان تجاری پس از اثبات واقعی و مشخص‌شدن کشور/روش پرداخت از منابع رسمی همان میزبان بررسی می‌شوند؛ قیمت حدسی یا قدیمی پیشنهاد نمی‌شود.
+مرحلهٔ فعلی: ابزار آزمایش تک‌اپراتور؛ **آمادگی انتشار عمومی SaaS ندارد**. نسخهٔ آزمایشی روی Vercel و Neon با پلن‌های رایگان مستقر شده است؛ [جزئیات استقرار](deployment.fa.md). هیچ سرویس پولی یا Trial خریداری/فعال نشده است. پیش از فروش، شرایط تجاری، worker دائمی و کشور/روش پرداخت باید روشن شوند.
 
 ## معماری فعلی
 
@@ -28,7 +28,11 @@ worker جداگانه با `npm run worker` اجرا می‌شود. سرویس �
 | DATABASE_URL                            | ارتباط سرور با DB خصوصی؛ TLS معتبر در production                                  |
 | POSTGRES_PASSWORD                       | فقط compose محلی؛ در production secret مدیریت‌شده                                 |
 | TOKEN_ENCRYPTION_KEY                    | کلید ۳۲ بایتی base64url برای AES-GCM؛ خارج از DB و backup داده نگهداری شود        |
-| PROOF_ADMIN_SECRET                      | کلید ۲۵۶ بیتی ابزار تک‌اپراتور؛ برای SaaS با auth واقعی جایگزین می‌شود            |
+| OPERATOR_EMAIL / OPERATOR_PASSWORD_HASH | ورود مدیر با ایمیل و هش scrypt؛ رمز خام فقط در فایل خصوصی محلی اولیه              |
+| CRON_SECRET                             | احراز endpoint اجرای صف؛ برای مرورگر یا صاحب پیج ارسال نمی‌شود                    |
+| DATABASE_URL_UNPOOLED                   | اتصال مستقیم برای migration؛ در حالت خالی از DATABASE_URL استفاده می‌شود          |
+| PRIVACY_CONTACT_EMAIL                   | ایمیل واقعی پاسخ‌گویی مالک؛ پیش از انتشار عمومی تکمیل شود                         |
+| PROOF_ADMIN_SECRET                      | سازگاری قدیمی فقط محلی؛ در Vercel غیرفعال و جایگزین فرم ایمیل/رمز شده است         |
 | SESSION_SECRET                          | HMAC session با HttpOnly، SameSite=Lax، Secure روی HTTPS                          |
 | INSTAGRAM_APP_ID / INSTAGRAM_APP_SECRET | شناسه/راز Instagram business login، نه حدس از Meta app اصلی                       |
 | META_WEBHOOK_APP_SECRET                 | secret امضاکنندهٔ webhook؛ با نمونهٔ واقعی همین اپ بررسی شود                      |

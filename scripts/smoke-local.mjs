@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 const base = process.env.APP_BASE_URL;
 assert.equal(base, 'http://localhost:3000');
 assert.equal(process.env.META_ADAPTER, 'simulated');
@@ -22,7 +23,18 @@ assert.equal(
     .status,
   403,
 );
-const login = await call('/api/proof/session', { secret: process.env.PROOF_ADMIN_SECRET });
+const credentials = process.env.OPERATOR_PASSWORD_HASH
+  ? readFileSync('.local/operator-login.txt', 'utf8')
+  : '';
+const login = await call(
+  '/api/proof/session',
+  credentials
+    ? {
+        email: credentials.match(/^Email: (.+)$/m)?.[1],
+        password: credentials.match(/^Password: (.+)$/m)?.[1],
+      }
+    : { secret: process.env.PROOF_ADMIN_SECRET },
+);
 assert.equal(login.status, 200);
 const setCookie = login.headers.get('set-cookie');
 assert(setCookie.includes('HttpOnly'));

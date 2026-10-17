@@ -46,6 +46,8 @@ export function LegalLinks() {
       <a href="/data-deletion">حذف داده‌ها</a>
       <span>·</span>
       <a href="/guide">راهنمای شروع</a>
+      <span>·</span>
+      <a href="/sendbox">اتصال Sendbox</a>
     </nav>
   );
 }

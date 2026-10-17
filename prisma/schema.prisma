@@ -109,3 +109,26 @@ model WorkerState {
   lastSeenAt DateTime
   provider   String
 }
+
+// Provider-specific proof stays isolated from the direct Meta adapter.
+model SendboxConnection {
+  id          String   @id @default("proof")
+  accountId   String   @unique
+  instagramId String
+  username    String
+  expiresAt   DateTime
+  connectedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Short-lived encrypted evidence; receiving an action result is not proof of delivery.
+model SendboxWebhookEvent {
+  eventId       String   @id
+  accountId     String
+  eventType     String
+  payloadCipher String?
+  receivedAt    DateTime @default(now())
+  expiresAt     DateTime
+
+  @@index([expiresAt])
+}

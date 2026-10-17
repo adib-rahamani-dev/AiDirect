@@ -2,6 +2,7 @@ import { equal } from '@/lib/crypto';
 import { db } from '@/lib/db';
 import { provider } from '@/lib/config';
 import { refreshIfNeeded, tick } from '@/lib/worker';
+import { expireSendboxEvidence } from '@/lib/sendbox-store';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 export async function POST(request: Request) {
@@ -18,6 +19,7 @@ export async function POST(request: Request) {
       });
     };
     await heartbeat();
+    await expireSendboxEvidence();
     await refreshIfNeeded();
     const processed = await tick();
     await heartbeat();

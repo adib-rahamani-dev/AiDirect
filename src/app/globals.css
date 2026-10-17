@@ -1,5 +1,15 @@
 @import '@fontsource/vazirmatn/400.css';
 @import '@fontsource/vazirmatn/700.css';
+.sendbox-addresses dd {
+  margin: 0 0 16px;
+  overflow-wrap: anywhere;
+  font-family: monospace;
+}
+.sendbox-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
 .mobile-logout {
   display: none !important;
 }

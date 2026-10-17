@@ -9,7 +9,10 @@ for (const file of readdirSync('.').filter(
   (name) => name === '.env' || (name.startsWith('.env.') && name !== '.env.example'),
 )) {
   for (const [key, value] of Object.entries(parse(readFileSync(file))))
-    if (/SECRET|PASSWORD|TOKEN|ENCRYPTION_KEY|DATABASE_URL/.test(key) && value.length >= 16)
+    if (
+      /SECRET|PASSWORD|TOKEN|ENCRYPTION_KEY|DATABASE_URL|API_KEY|OAUTH_URL/.test(key) &&
+      value.length >= 16
+    )
       secrets.push(value);
 }
 if (existsSync('.local/operator-login.txt')) {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { db } from '../src/lib/db';
 import { encrypt } from '../src/lib/crypto';
 import { ingest } from '../src/lib/pipeline';
-import { tick } from '../src/lib/worker';
+import { tick, refreshIfNeeded } from '../src/lib/worker';
 import { MetaError, type InstagramAdapter } from '../src/lib/meta';
 const url = new URL(process.env.DATABASE_URL!);
 if (
@@ -259,4 +259,49 @@ test('Durable PostgreSQL proof pipeline', async (t) => {
     await ingest([incoming()], 'webhook');
     assert.equal(await db.delivery.count(), 0);
   });
+  await t.test(
+    'concurrent failed token refreshes share a persistent one-hour retry deadline',
+    async () => {
+      await reset();
+      await db.proofConnection.update({
+        where: { id: 'proof' },
+        data: {
+          issuedAt: new Date(Date.now() - 2 * 86400_000),
+          expiresAt: new Date(Date.now() + 2 * 86400_000),
+        },
+      });
+      await db.proofLoginGuard.deleteMany({ where: { id: 'token-refresh' } });
+      const original = globalThis.fetch;
+      let calls = 0;
+      process.env.META_ADAPTER = 'meta';
+      globalThis.fetch = async () => {
+        calls++;
+        return Response.json({ error: { code: 2, is_transient: true } }, { status: 503 });
+      };
+      try {
+        await Promise.all([
+          refreshIfNeeded(),
+          refreshIfNeeded(),
+          refreshIfNeeded(),
+          refreshIfNeeded(),
+        ]);
+        await refreshIfNeeded();
+        assert.equal(calls, 1);
+        assert.equal(
+          (await db.proofConnection.findUniqueOrThrow({ where: { id: 'proof' } })).status,
+          'connected',
+        );
+        assert(
+          (
+            await db.proofLoginGuard.findUniqueOrThrow({ where: { id: 'token-refresh' } })
+          ).nextAttemptAt.getTime() >
+            Date.now() + 3500_000,
+        );
+      } finally {
+        globalThis.fetch = original;
+        process.env.META_ADAPTER = 'simulated';
+        await db.proofLoginGuard.deleteMany({ where: { id: 'token-refresh' } });
+      }
+    },
+  );
 });

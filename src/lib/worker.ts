@@ -206,6 +206,17 @@ export async function refreshIfNeeded() {
     });
     return;
   }
+  // Persist the refresh deadline: multiple stateless Vercel invocations must not
+  // hammer Meta when a refresh fails. This guard is separate from login attempts.
+  const now = new Date();
+  const claimed = await db.$transaction(async (tx) => {
+    await tx.$executeRaw`INSERT INTO "ProofLoginGuard" (id,"nextAttemptAt") VALUES ('token-refresh',${now}) ON CONFLICT (id) DO NOTHING`;
+    const rows = await tx.$queryRaw<
+      { id: string }[]
+    >`UPDATE "ProofLoginGuard" SET "nextAttemptAt"=${new Date(now.getTime() + 3600_000)} WHERE id='token-refresh' AND "nextAttemptAt"<=${now} RETURNING id`;
+    return rows.length > 0;
+  });
+  if (!claimed) return;
   try {
     const result = await refreshToken(decrypt(conn.tokenCipher, `token:${conn.accountId}`));
     await db.proofConnection.updateMany({

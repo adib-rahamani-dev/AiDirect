@@ -48,8 +48,13 @@ for (const path of ['/', '/sendbox', '/proof']) {
   status(r, 200);
   const html = await r.text();
   noSecrets(html);
-  if (path !== '/proof') {
+  if (path === '/sendbox') {
     assert(html.includes('id="access-email"'));
+    checks++;
+  }
+  if (path === '/') {
+    assert(html.includes('id="landing-title"') && html.includes('id="demo-comment"'));
+    assert(!html.includes('id="access-email"'));
     checks++;
   }
 }

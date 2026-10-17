@@ -47,7 +47,7 @@ export function LegalLinks() {
       <span>·</span>
       <a href="/guide">راهنمای شروع</a>
       <span>·</span>
-      <a href="/sendbox">اتصال Sendbox</a>
+      <a href="/sendbox">حساب اینستاگرام</a>
     </nav>
   );
 }

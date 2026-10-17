@@ -1,4 +1,5 @@
 import './globals.css';
+import './access.css';
 export const metadata = {
   title: 'AiDirect — از کامنت تا گفتگو',
   description: 'فضای آزمایشی اتصال رسمی اینستاگرام و پاسخ خصوصی به کامنت',

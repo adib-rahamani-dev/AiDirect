@@ -8,7 +8,7 @@ import { hash } from '@/lib/crypto';
 import { baseUrl, provider } from '@/lib/config';
 export const runtime = 'nodejs';
 export async function GET() {
-  let destination = '/';
+  let destination = '/proof';
   try {
     const actor = await connectionActor();
     if (actor.inviteHash) destination = '/connect';

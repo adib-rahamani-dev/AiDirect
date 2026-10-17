@@ -1,155 +1,295 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import AccessFrame, { AccessIcon } from '../access-frame';
+import LoginScreen from '../login-screen';
 type Status = {
   configured: boolean;
   sendingEnabled: false;
   connection: { username: string; expiresAt: string } | null;
   events: { eventType: string; receivedAt: string }[];
 };
-type Inspection = {
-  configured: boolean;
-  accountLimit: number;
-  accounts: { id: string; username: string; is_active: boolean }[];
+const eventLabels: Record<string, string> = {
+  comments: 'کامنت تازه دریافت شد',
+  'action.private_reply': 'نتیجهٔ درخواست پاسخ دریافت شد',
+  'action.list_posts': 'نتیجهٔ درخواست پست‌ها دریافت شد',
+  'action.comment_comments': 'نتیجهٔ درخواست کامنت‌ها دریافت شد',
 };
 export default function SendboxPanel() {
   const [state, setState] = useState<Status | null>(null);
-  const [inspection, setInspection] = useState<Inspection | null>(null);
-  const [login, setLogin] = useState(false);
+  const [needsLogin, setNeedsLogin] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  async function load() {
+  const [error, setError] = useState(false);
+  const actionPending = useRef(false);
+  const load = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await fetch('/api/sendbox', { cache: 'no-store' });
+      const response = await fetch('/api/sendbox', {
+        cache: 'no-store',
+        signal: signal ?? AbortSignal.timeout(15000),
+      });
       if (response.status === 401) {
-        setLogin(true);
+        setState(null);
+        setNeedsLogin(true);
         return;
       }
       if (!response.ok) throw new Error();
       setState(await response.json());
-      setLogin(false);
+      setNeedsLogin(false);
+      setError(false);
     } catch {
-      setMessage('بررسی وضعیت ممکن نشد؛ دوباره تلاش کن.');
+      if (signal?.aborted) return;
+      setError(true);
+    } finally {
+      if (!signal?.aborted) setLoading(false);
     }
-  }
+  }, []);
   useEffect(() => {
-    void load();
+    const controller = new AbortController();
+    let active = true;
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
+    void load(controller.signal).finally(() => {
+      window.clearTimeout(timeout);
+      if (active && controller.signal.aborted) {
+        setError(true);
+        setLoading(false);
+      }
+    });
     const result = new URLSearchParams(window.location.search).get('result');
     const messages: Record<string, string> = {
-      connected: 'اتصال پیج با API سرویس تأیید شد؛ ارسال پیام هنوز فعال نیست.',
-      settings_required: 'ابتدا Domain و Redirect URL را در پنل سرویس ذخیره کن.',
-      connect_not_ready: 'تنظیمات اتصال کامل نیست یا نشست مدیریت تمام شده است.',
-      connection_failed: 'اتصال تأیید نشد. از همین صفحه اتصال را دوباره شروع کن.',
+      connected: 'حساب متصل شد. حالا وضعیتش را اینجا می‌بینی.',
+      settings_required: 'اتصال حساب فعلاً آماده نیست. کمی بعد دوباره تلاش کن.',
+      connect_not_ready: 'اتصال شروع نشد. ورودت را بررسی کن و دوباره تلاش کن.',
+      connection_failed: 'اتصال کامل نشد. می‌توانی دوباره از همین‌جا شروع کنی.',
     };
-    if (result) setMessage(messages[result] ?? 'وضعیت اتصال را بررسی کن.');
-  }, []);
-  async function inspect() {
-    setBusy(true);
-    setMessage('');
-    try {
-      const r = await fetch('/api/sendbox', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'inspect' }),
-      });
-      if (!r.ok) throw new Error();
-      setInspection(await r.json());
-      await load();
-    } catch {
-      setMessage('API در دسترس نیست یا نشست مدیریت تمام شده؛ ورود و تنظیمات سرور را بررسی کن.');
-    } finally {
-      setBusy(false);
+    if (result) {
+      setMessage(messages[result] ?? 'وضعیت حساب را بررسی کن.');
+      window.history.replaceState(null, '', window.location.pathname);
     }
-  }
-  async function disconnect() {
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [load]);
+  async function action(kind: 'logout' | 'disconnect') {
+    if (actionPending.current) return;
     if (
+      kind === 'disconnect' &&
       !window.confirm(
-        'اتصال محلی و رویدادهای Sendbox از AiDirect حذف شوند؟ لغو دسترسی در پنل سرویس جداگانه است.',
+        'حساب و فعالیت‌های آن از AiDirect پاک شوند؟ برای لغو مجوز اینستاگرام، تنظیمات برنامه‌ها و وب‌سایت‌های Instagram را هم بررسی کن.',
       )
     )
       return;
+    actionPending.current = true;
     setBusy(true);
+    setMessage('');
     try {
-      const response = await fetch('/api/sendbox', {
+      const response = await fetch(kind === 'logout' ? '/api/proof' : '/api/sendbox', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'disconnect' }),
+        body: JSON.stringify({ action: kind }),
+        signal: AbortSignal.timeout(20000),
       });
+      if (response.status === 401 || (kind === 'logout' && response.ok)) {
+        setState(null);
+        setNeedsLogin(true);
+        return;
+      }
       if (!response.ok) throw new Error();
-      setInspection(null);
       await load();
-      setMessage(
-        'اتصال محلی و رویدادها حذف شدند. برای لغو دسترسی، پنل سرویس یا تنظیمات Instagram را باز کن.',
-      );
+      setMessage('اتصال حساب و فعالیت‌های آن از AiDirect حذف شدند.');
     } catch {
-      setMessage('حذف اتصال محلی انجام نشد؛ دوباره بررسی کن.');
+      setMessage('عملیات کامل نشد. وضعیت حساب را بررسی کن و دوباره تلاش کن.');
     } finally {
+      actionPending.current = false;
       setBusy(false);
     }
   }
+  if (needsLogin) return <LoginScreen destination="/sendbox" />;
+  const connected = Boolean(
+    state?.connection && Date.parse(state.connection.expiresAt) > Date.now(),
+  );
   return (
-    <section className="card" aria-label="وضعیت اتصال Sendbox">
-      {message && <p role="status">{message}</p>}
-      {login ? (
-        <p>
-          برای بررسی اتصال، ابتدا <a href="/">وارد پنل مدیریت شو</a> و به این صفحه برگرد.
-        </p>
-      ) : state ? (
-        <>
-          <p>تنظیمات خصوصی سرور: {state.configured ? 'ثبت شده' : 'ناقص'}</p>
-          <p>
-            پیج متصل به AiDirect:{' '}
-            {state.connection ? <bdi>@{state.connection.username}</bdi> : 'هنوز متصل نشده'}
-          </p>
-          <p>ارسال پاسخ خصوصی: در انتظار اثبات مسیر واقعی</p>
-          <div className="sendbox-actions">
-            <button disabled={busy} onClick={inspect}>
-              {busy ? 'در حال بررسی…' : 'بررسی تنظیمات سرویس'}
-            </button>
-            <button
-              className="secondary"
-              disabled={busy}
-              onClick={() => {
-                void load();
-              }}
-            >
-              به‌روزرسانی رویدادها
-            </button>
-            {inspection?.configured && state.configured && (
-              <a className="button" href="/api/sendbox/connect">
-                اتصال پیج با اینستاگرام
-              </a>
-            )}
-            {state.connection && (
-              <button className="secondary" disabled={busy} onClick={disconnect}>
-                قطع اتصال محلی و حذف رویدادها
-              </button>
-            )}
-          </div>
-          {inspection && (
-            <p role="status">
-              دامنه و مسیر بازگشت: {inspection.configured ? 'صحیح' : 'نیازمند اصلاح در پنل سرویس'}.
-              تعداد پیج‌های سرویس: {inspection.accounts.length}؛ سقف پلن: {inspection.accountLimit}.
-            </p>
-          )}
-          <h2>رویدادهای امضاشدهٔ اخیر</h2>
-          {state.events.length ? (
-            <ul>
-              {state.events.map((event, i) => (
-                <li key={i}>
-                  <bdi>{event.eventType}</bdi> —{' '}
-                  <time dateTime={event.receivedAt}>
-                    {new Date(event.receivedAt).toLocaleString('fa-IR')}
-                  </time>
-                </li>
-              ))}
-            </ul>
+    <AccessFrame
+      step="connect"
+      action={
+        state && (
+          <button
+            className="access-exit"
+            onClick={() => {
+              void action('logout');
+            }}
+            disabled={busy}
+          >
+            خروج
+          </button>
+        )
+      }
+    >
+      <div className="access-heading">
+        <span className="access-kicker">حساب اینستاگرام</span>
+        <h1>
+          {connected ? (
+            <>
+              حساب تو،
+              <br />
+              همین‌جاست<span>.</span>
+            </>
           ) : (
-            <p>هنوز رویدادی از پیج متصل ثبت نشده است.</p>
+            <>
+              پیجت را
+              <br />
+              به گفتگو وصل کن<span>.</span>
+            </>
           )}
-        </>
-      ) : (
-        !login && <p role="status">در حال بررسی وضعیت…</p>
+        </h1>
+        <p>
+          {connected
+            ? 'اتصال و فعالیت‌های حسابت را از اینجا دنبال کن.'
+            : 'ورود به اینستاگرام، یک قدم تا اتصال حسابت.'}
+        </p>
+      </div>
+      {message && (
+        <p className="access-feedback" role="status">
+          {message}
+        </p>
       )}
-    </section>
+      {loading ? (
+        <div className="account-loading" role="status">
+          <span className="access-busy" aria-hidden="true" />
+          در حال بررسی حساب…
+        </div>
+      ) : error ? (
+        <div className="account-unavailable">
+          <p role="alert">وضعیت حساب دریافت نشد. دوباره بررسی کنیم؟</p>
+          <button
+            className="access-primary"
+            onClick={() => {
+              setLoading(true);
+              void load();
+            }}
+          >
+            تلاش دوباره
+            <AccessIcon name="arrow" />
+          </button>
+        </div>
+      ) : (
+        state && (
+          <>
+            <div className="account-identity">
+              <span className="account-avatar">
+                <AccessIcon name="instagram" />
+              </span>
+              <div>
+                <strong>
+                  {state.connection ? <bdi>@{state.connection.username}</bdi> : 'اینستاگرام تو'}
+                </strong>
+                <span>
+                  {connected
+                    ? 'متصل به AiDirect'
+                    : state.connection
+                      ? 'نیاز به ورود دوباره'
+                      : 'هنوز حسابی متصل نکرده‌ای'}
+                </span>
+              </div>
+              {connected && (
+                <span className="account-check">
+                  <AccessIcon name="check" />
+                </span>
+              )}
+            </div>
+            {!connected && (
+              <>
+                <a
+                  className={'access-primary' + (!state.configured || busy ? ' is-disabled' : '')}
+                  href={state.configured && !busy ? '/api/sendbox/connect' : undefined}
+                  aria-disabled={!state.configured || busy}
+                >
+                  <span>
+                    {state.connection ? 'ورود دوباره به اینستاگرام' : 'اتصال با اینستاگرام'}
+                  </span>
+                  <AccessIcon name="arrow" />
+                </a>
+                {!state.configured && (
+                  <p className="access-feedback" role="status">
+                    اتصال حساب موقتاً در دسترس نیست. کمی بعد دوباره بررسی کن.
+                  </p>
+                )}
+                <div className="access-security">
+                  <AccessIcon name="lock" />
+                  <p>
+                    ورود در صفحهٔ رسمی Instagram انجام می‌شود.
+                    <br />
+                    <span>AiDirect رمز اینستاگرامت را دریافت نمی‌کند.</span>
+                  </p>
+                </div>
+                <p className="access-footnote">حساب Business یا Creator خودت را متصل کن.</p>
+              </>
+            )}
+            {connected && (
+              <div className="account-send-status">
+                <span className="account-status-dot" />
+                ارسال خودکار فعلاً غیرفعال است.
+              </div>
+            )}
+            <div className="account-activity">
+              <div className="account-section-title">
+                <h2>فعالیت حساب</h2>
+                <button
+                  className="access-text-button"
+                  disabled={busy}
+                  onClick={() => {
+                    void load();
+                  }}
+                >
+                  تازه‌سازی
+                </button>
+              </div>
+              {state.events.length ? (
+                <ul>
+                  {state.events.map((event, index) => (
+                    <li key={event.receivedAt + index}>
+                      <span>{eventLabels[event.eventType] ?? 'رویداد جدید حساب'}</span>
+                      <time dateTime={event.receivedAt}>
+                        {new Date(event.receivedAt).toLocaleString('fa-IR', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </time>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="account-empty">
+                  هنوز فعالیتی ثبت نشده.
+                  <span>رویدادهای حساب پس از اتصال، اینجا نمایش داده می‌شوند.</span>
+                </p>
+              )}
+            </div>
+            {state.connection && (
+              <details className="account-manage">
+                <summary>مدیریت اتصال</summary>
+                <p>
+                  این گزینه اتصال و فعالیت‌های حساب را از AiDirect حذف می‌کند. لغو دسترسی در
+                  Instagram جداگانه انجام می‌شود.
+                </p>
+                <button
+                  className="access-text-button access-danger"
+                  disabled={busy}
+                  onClick={() => {
+                    void action('disconnect');
+                  }}
+                >
+                  قطع اتصال از AiDirect
+                </button>
+              </details>
+            )}
+          </>
+        )
+      )}
+    </AccessFrame>
   );
 }

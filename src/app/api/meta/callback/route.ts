@@ -8,7 +8,7 @@ import { baseUrl } from '@/lib/config';
 export const runtime = 'nodejs';
 export async function GET(request: Request) {
   let result = 'oauth_failed';
-  let destination = '/';
+  let destination = '/proof';
   try {
     const actor = await connectionActor();
     if (actor.inviteHash) destination = '/connect';

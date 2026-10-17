@@ -16,7 +16,11 @@ export async function POST(request: Request) {
       >`UPDATE "ProofLoginGuard" SET "nextAttemptAt"=NOW()+INTERVAL '3 seconds' WHERE id='operator' AND "nextAttemptAt"<=NOW() RETURNING id`;
       return rows.length > 0;
     });
-    if (!claimed) return Response.json({ error: 'wait' }, { status: 429 });
+    if (!claimed)
+      return Response.json(
+        { error: 'wait' },
+        { status: 429, headers: { 'Retry-After': '3', 'Cache-Control': 'no-store' } },
+      );
     const passwordHash = process.env.OPERATOR_PASSWORD_HASH;
     let authorized = false;
     if (passwordHash && process.env.OPERATOR_EMAIL && typeof password === 'string') {

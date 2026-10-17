@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { Brand, LegalLinks, Section } from './ui';
+import LoginScreen from './login-screen';
 
 type Delivery = {
   id: string;
@@ -68,9 +69,6 @@ const errors: Record<string, string> = {
 export default function ProofPanel() {
   const [state, setState] = useState<ProofState | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [media, setMedia] = useState<Media[]>([]);
@@ -89,7 +87,7 @@ export default function ProofPanel() {
       } else if (response.status === 401) {
         setState(null);
         setInvite('');
-      } else setNotice('دریافت اطلاعات ممکن نشد. اتصال سرور و دیتابیس را بررسی کنید.');
+      } else setNotice('فضای کار بارگیری نشد. کمی بعد دوباره تلاش کن.');
     } catch {
       setNotice('ارتباط با سرور برقرار نشد؛ دوباره تلاش کنید.');
     } finally {
@@ -152,34 +150,6 @@ export default function ProofPanel() {
       setBusy(false);
     }
   }
-  async function login(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setNotice('');
-    try {
-      const response = await fetch('/api/proof/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      if (!response.ok) {
-        setNotice(
-          response.status === 429
-            ? 'چند ثانیه صبر کنید و دوباره تلاش کنید.'
-            : response.status === 503
-              ? 'ورود موقتاً در دسترس نیست؛ تنظیمات سرور باید بررسی شود.'
-              : 'ایمیل یا رمز عبور درست نیست.',
-        );
-        return;
-      }
-      setPassword('');
-      await load();
-    } catch {
-      setNotice('ارتباط با سرور برقرار نشد. دوباره تلاش کنید.');
-    } finally {
-      setBusy(false);
-    }
-  }
   async function createInvite() {
     setBusy(true);
     setNotice('');
@@ -226,122 +196,7 @@ export default function ProofPanel() {
         <p>در حال آماده‌سازی فضای شما…</p>
       </main>
     );
-  if (!state)
-    return (
-      <div className="auth-page">
-        <header className="auth-header">
-          <Brand />
-          <span className="pill">
-            <span className="dot" />
-            نسخهٔ آزمایشی
-          </span>
-        </header>
-        <main className="auth-grid">
-          <section className="auth-story">
-            <span className="eyebrow">از یک کامنت، گفتگو شروع می‌شود.</span>
-            <h1>
-              کامنت می‌گذارن.
-              <br />
-              <span>تو گفتگو رو شروع کن.</span>
-            </h1>
-            <p className="hero-copy">
-              یک کلمه، یک پاسخ خصوصی و یک قدم نزدیک‌تر به مشتری. مسیر رسمی اینستاگرام، در یک فضای
-              ساده.
-            </p>
-            <div className="conversation-demo" aria-label="نمونهٔ نمایشی جریان کامنت به پاسخ خصوصی">
-              <div className="demo-label">نمایش مسیر · پیام واقعی ارسال نشده</div>
-              <div className="demo-comment">
-                <span className="avatar">م</span>
-                <div>
-                  <strong>یک دنبال‌کننده</strong>
-                  <p>لینک رو برام می‌فرستی؟ ✨</p>
-                </div>
-                <span className="comment-heart">♡</span>
-              </div>
-              <div className="flow-line">
-                <span>کلمهٔ «لینک» پیدا شد</span>
-                <span>↓</span>
-              </div>
-              <div className="demo-message">
-                <span className="message-icon">↗</span>
-                <div>
-                  <strong>پاسخ خصوصی شما</strong>
-                  <p>سلام! این هم لینکی که خواسته بودی 👋</p>
-                  <span className="demo-link" dir="ltr">
-                    your-brand.com/offer ↗
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="trust-row">
-              <span>↗ ورود رسمی Instagram</span>
-              <span>◈ توکن رمزنگاری‌شده</span>
-              <span>◎ کنترل ارسال تکراری</span>
-            </div>
-          </section>
-          <section className="login-card">
-            <span className="card-symbol" aria-hidden="true">
-              ✳
-            </span>
-            <h2>خوش برگشتی.</h2>
-            <p>وارد فضای آزمایش AiDirect شو.</p>
-            {notice && (
-              <div className="notice" role="status">
-                {notice}
-              </div>
-            )}
-            <form onSubmit={login}>
-              <label htmlFor="email">ایمیل مدیر</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="username"
-                dir="ltr"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                maxLength={254}
-              />
-              <label htmlFor="password">رمز عبور</label>
-              <div className="password-field">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  dir="ltr"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  maxLength={256}
-                />
-                <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-pressed={showPassword}
-                >
-                  {showPassword ? 'پنهان' : 'نمایش'}
-                </button>
-              </div>
-              <button className="full" disabled={busy}>
-                {busy ? 'در حال ورود…' : 'ورود به پنل'}
-                <span aria-hidden="true">←</span>
-              </button>
-            </form>
-            <p className="login-help">
-              برای اتصال پیج دعوت شده‌ای؟ لینک اختصاصی دعوت را باز کن؛ به رمز مدیر نیاز نداری.
-            </p>
-            <LegalLinks />
-          </section>
-        </main>
-        <footer className="auth-footer">
-          AiDirect · نسخهٔ محدود برای اثبات اتصال رسمی؛ ثبت‌نام عمومی هنوز فعال نیست.
-        </footer>
-      </div>
-    );
+  if (!state) return <LoginScreen initialMessage={notice} destination="/proof" />;
   return (
     <div className="workspace">
       <aside className="sidebar">

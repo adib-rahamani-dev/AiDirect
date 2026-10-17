@@ -1,4 +1,4 @@
-import ProofPanel from './proof-panel';
+import AccountEntry from './account-entry';
 export default function Page() {
-  return <ProofPanel />;
+  return <AccountEntry />;
 }

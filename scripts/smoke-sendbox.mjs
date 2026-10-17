@@ -42,9 +42,17 @@ function noSecrets(body) {
     if (secret) assert.equal(body.includes(secret), false);
   checks++;
 }
-let r = await call('/sendbox');
-status(r, 200);
-noSecrets(await r.text());
+let r;
+for (const path of ['/', '/sendbox', '/proof']) {
+  r = await call(path);
+  status(r, 200);
+  const html = await r.text();
+  noSecrets(html);
+  if (path !== '/proof') {
+    assert(html.includes('id="access-email"'));
+    checks++;
+  }
+}
 status(await call('/api/sendbox'), 401);
 status(await call('/api/sendbox', { action: 'inspect' }), 401);
 status(
@@ -84,9 +92,15 @@ if (r.status === 429) {
   r = await call('/api/proof/session', { email, password });
 }
 status(r, 200);
-cookie = r.headers.get('set-cookie')?.split(';')[0] ?? '';
+const sessionHeader = r.headers.get('set-cookie') ?? '';
+for (const attribute of ['HttpOnly', 'Secure', 'SameSite=lax', 'Path=/']) {
+  assert(sessionHeader.toLowerCase().includes(attribute.toLowerCase()));
+  checks++;
+}
+cookie = sessionHeader.split(';')[0];
 assert(cookie);
 checks++;
+status(await call('/api/sendbox', undefined, { Cookie: cookie + 'tampered' }), 401);
 r = await call('/api/sendbox');
 status(r, 200);
 const text = await r.text();

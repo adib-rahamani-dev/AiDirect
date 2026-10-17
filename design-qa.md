@@ -7,6 +7,7 @@ final result: passed
 The user selected the third displayed concept and requested refinement. Revised visual truth: C:/Users/EXO/.codex/generated_images/01a10864-9dea-7fe2-8088-191b0777098f/exec-1042f825-e935-4676-a030-d317f088eec5.png (1422×1106). Normalized proportionally to 1440×1120 in local-evidence/landing-target-normalized.png for comparison with the local production build at http://127.0.0.1:3100/.
 
 - Desktop: local-evidence/landing-desktop.png, 1440×1120 CSS and capture pixels, DPR 1, page top, initial matched state.
+- Final crisp handoff crop: local-evidence/landing-final.png, x0/y0/1400×1040 from the same desktop viewport. Public-domain visual capture was blocked by the browser URL safety gate; no alternate browser workaround was attempted. Canonical HTTPS smoke checks passed separately.
 - Focused workbench: local-evidence/landing-target-workbench.png and local-evidence/landing-workbench.png, same x55/y610/1325×270 crop. Opened together in one comparison input. Full-view source and implementation were also opened together.
 - Mobile: local-evidence/landing-mobile.png, 390×844 CSS viewport; capture 375×812, proportionally scaled by browser surface (~0.962). No mobile visual target was supplied.
 - Tablet: local-evidence/landing-tablet.png, 834×1194 CSS viewport.

@@ -14,6 +14,7 @@ export async function GET() {
     if (!info.configured)
       return NextResponse.redirect(`${baseUrl()}/sendbox?result=settings_required`);
     const state = randomBytes(32).toString('base64url');
+    await db.oAuthAttempt.deleteMany({ where: { expiresAt: { lt: new Date() } } });
     await db.oAuthAttempt.create({
       data: { stateHash: hash(`sendbox:${state}`), expiresAt: new Date(Date.now() + 600000) },
     });

@@ -2,7 +2,8 @@
 
 آخرین بررسی: 2026-10-17، Asia/Tehran.
 
-نسخهٔ آنلاین: https://aidirect-kappa.vercel.app  
+نسخهٔ آنلاین: https://aidirect-kappa.vercel.app
+
 مخزن: https://github.com/adib-rahamani-dev/AiDirect
 
 **اتصال و پاسخ خصوصی واقعی متا هنوز اثبات نشده‌اند.** محیط آنلاین simulated و REAL_SEND_ENABLED=false است. هیچ خرید API، سرویس پولی یا Trial انجام نشده است.

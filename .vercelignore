@@ -1,0 +1,11 @@
+.git/
+.agents/
+.local/
+.env
+.env.*
+!.env.example
+local-evidence/
+backups/
+coverage/
+tests/
+skills-lock.json

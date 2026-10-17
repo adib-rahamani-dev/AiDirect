@@ -1,0 +1,50 @@
+{
+  "name": "aidirect-proof",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "prisma generate && next build",
+    "start": "next start --hostname 127.0.0.1",
+    "worker": "tsx --env-file=.env scripts/worker.ts",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "node --env-file=.env scripts/test.mjs",
+    "setup:local": "node scripts/setup-local.mjs",
+    "login:setup": "node --import tsx scripts/configure-login.mjs",
+    "worker:remote": "node --env-file=.env.remote.local scripts/remote-worker.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "format": "prettier --write src tests scripts docs README.md STATUS.md next.config.ts prisma.config.ts package.json tsconfig.json vercel.json .github",
+    "format:check": "prettier --check src tests scripts docs README.md STATUS.md next.config.ts prisma.config.ts package.json tsconfig.json vercel.json .github"
+  },
+  "dependencies": {
+    "@fontsource/vazirmatn": "5.3.0",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "dotenv": "17.2.3",
+    "next": "16.3.8",
+    "pg": "8.16.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/pg": "8.15.6",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "prettier": "3.9.10",
+    "prisma": "7.10.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.2",
+    "mysql2": "3.24.5"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

@@ -1,0 +1,10 @@
+node_modules
+.next
+.vercel
+.local
+.agents
+.env*
+src/generated
+package-lock.json
+backups
+local-evidence

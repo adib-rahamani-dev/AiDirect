@@ -26,6 +26,16 @@ function request(data: unknown, valid = true) {
 after(async () => {
   await db.$disconnect();
 });
+test('Sendbox ingress rejects an oversized raw body before signature or database processing', async () => {
+  process.env.SENDBOX_WEBHOOK_SECRET = secret;
+  const response = await POST(
+    new Request('https://example.com/api/sendbox/webhook', {
+      method: 'POST',
+      body: 'x'.repeat(1_048_577),
+    }),
+  );
+  assert.equal(response.status, 413);
+});
 test('Sendbox HTTP receipt persists once, encrypts content, isolates account and ignores DM echoes', async () => {
   process.env.SENDBOX_WEBHOOK_SECRET = secret;
   await db.sendboxWebhookEvent.deleteMany();

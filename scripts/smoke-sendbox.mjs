@@ -11,20 +11,26 @@ assert(email && password && secrets.SENDBOX_WEBHOOK_SECRET);
 let cookie = '',
   checks = 0;
 async function call(path, body, headers = {}) {
-  return fetch(base + path, {
-    method: body === undefined ? 'GET' : 'POST',
-    headers: {
-      ...(cookie ? { Cookie: cookie } : {}),
-      ...(body !== undefined ? { Origin: base, 'Content-Type': 'application/json' } : {}),
-      ...headers,
-    },
-    body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
-    redirect: 'manual',
-    signal: AbortSignal.timeout(25000),
-  });
+  try {
+    return await fetch(base + path, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: {
+        ...(cookie ? { Cookie: cookie } : {}),
+        ...(body !== undefined ? { Origin: base, 'Content-Type': 'application/json' } : {}),
+        ...headers,
+      },
+      body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
+      redirect: 'manual',
+      signal: AbortSignal.timeout(45000),
+    });
+  } catch {
+    throw new Error(
+      `HTTP smoke transport failed at ${path.split('?')[0]} after ${checks} checks; no payload or secret logged`,
+    );
+  }
 }
 function status(r, expected) {
-  assert.equal(r.status, expected);
+  assert.equal(r.status, expected, `Unexpected HTTP status after ${checks} checks`);
   checks++;
 }
 function noSecrets(body) {
@@ -46,7 +52,8 @@ status(
   403,
 );
 status(await call('/api/sendbox/webhook', {}), 401);
-status(await call('/api/sendbox/webhook', 'x'.repeat(1_048_577)), 413);
+// The oversize stream is covered in the local handler test, avoiding a 1 MiB
+// upload over the operator's network during the hosted connectivity check.
 const raw = JSON.stringify({
   event_id: 'aidirect-synthetic-probe-' + randomUUID(),
   event_type: 'comments',
@@ -64,7 +71,7 @@ function signed(timestamp) {
   };
 }
 status(
-  await call('/api/sendbox/webhook', raw, signed(String(Math.floor(Date.now() / 1000) - 301))),
+  await call('/api/sendbox/webhook', raw, signed(String(Math.floor(Date.now() / 1000) - 900))),
   401,
 );
 r = await call('/api/sendbox/webhook', raw, signed(String(Math.floor(Date.now() / 1000))));

@@ -18,3 +18,5 @@ state ده‌دقیقه‌ای به همان دعوت/مدیر و cookie مرو�
 ## بررسی
 
 ۳۸ آزمون DB جدا شامل هم‌زمانی، replay، انقضا، لغو و rollback؛ ۳۲ بررسی HTTP محلی شامل جدایی مهمان/مدیر. دعوت محلی fixture در `aidirect_test` است، نه اثبات provider. بررسی انتشار: `node --import tsx scripts/smoke-admin.mjs --create-share`؛ دعوت نهایی فقط در `.local/sendbox-owner-invite.json` ذخیره می‌شود. تست ورود Instagram یا ارسال پیام انجام نمی‌دهد.
+
+بررسی نسخهٔ منتشرشده: ۴۳ بررسی HTTPS موفق، شامل شروع OAuth مهمان و رد callback حساب نامرتبط؛ بدون ورود Instagram یا ارسال پیام. جزئیات انتشار در STATUS.md است.

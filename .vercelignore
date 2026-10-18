@@ -13,3 +13,7 @@ backups/
 coverage/
 tests/
 skills-lock.json
+node_modules/
+.next/
+src/generated/
+*.tsbuildinfo

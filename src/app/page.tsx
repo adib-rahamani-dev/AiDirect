@@ -1,5 +1,11 @@
-import '@fontsource-variable/estedad';
-import { ArrowLeftIcon, ArrowUpRightIcon } from '@phosphor-icons/react/ssr';
+import {
+  ArrowLeftIcon,
+  ArrowUpRightIcon,
+  LinkIcon,
+  MagnifyingGlassIcon,
+  PencilSimpleIcon,
+} from '@phosphor-icons/react/ssr';
+import Image from 'next/image';
 import ConversationDemo from './conversation-demo';
 import styles from './landing.module.css';
 
@@ -22,30 +28,54 @@ export default function Page() {
           <a className={styles.howLink} href="#how-it-works">
             روش کار
           </a>
-          <a className={styles.loginLink} href="/sendbox">
+          <a className={styles.loginLink} href="/admin">
             ورود به حساب <ArrowUpRightIcon size={19} aria-hidden="true" />
           </a>
         </nav>
       </header>
       <main id="main">
         <section className={styles.hero} aria-labelledby="landing-title">
-          <h1 id="landing-title" className={styles.headline}>
-            <span className={styles.headlineFirst}>از «لینک»</span>
-            <span className={styles.headlineSecond}>
-              تا یک <em>گفتگوی</em> تازه<span className={styles.dot}>.</span>
-            </span>
-          </h1>
-          <p className={styles.intro}>کلمه را تو انتخاب کن. پاسخ هم، با لحن خودت.</p>
-          <a className={styles.primary} href="/sendbox">
-            ورود و اتصال پیج <ArrowLeftIcon size={25} aria-hidden="true" />
-          </a>
-          <p className={styles.beta}>نسخهٔ آزمایشی؛ ارسال خودکار هنوز فعال نیست.</p>
-          <p className={styles.marginNote}>از کامنت تا پاسخ خصوصی</p>
+          <Image
+            className={styles.heroPortrait}
+            src="/images/creator-hero-v2.webp"
+            width={1000}
+            height={750}
+            sizes="(max-width: 760px) 100vw, 52vw"
+            preload
+            alt=""
+          />
+          <div className={styles.heroContent}>
+            <h1 id="landing-title" className={styles.headline}>
+              <span className={styles.headlineFirst}>هر کامنت،</span>
+              <span className={styles.headlineSecond}>یک شروع تازه.</span>
+            </h1>
+            <p className={styles.intro}>کلمه را تو انتخاب کن. پاسخ هم، با لحن خودت.</p>
+            <a className={styles.primary} href="/admin">
+              ورود و اتصال پیج <ArrowLeftIcon size={25} aria-hidden="true" />
+            </a>
+            <p className={styles.beta}>نسخهٔ آزمایشی؛ ارسال خودکار هنوز فعال نیست.</p>
+          </div>
         </section>
-        <ConversationDemo />
+        <section className={styles.story} aria-label="از کامنت تا گفتگو">
+          <div className={styles.storyCopy}>
+            <h2>
+              لحن تو، <br />
+              ادامهٔ <em>گفتگو.</em>
+            </h2>
+            <p>یک کلمه، یک پاسخ آماده؛ برای ادامهٔ ارتباط با آدم‌هایی که به کارت علاقه دارند.</p>
+            <a href="/connect/instagram">
+              مسیر اتصال پیج
+              <ArrowLeftIcon size={20} aria-hidden="true" />
+            </a>
+          </div>
+          <ConversationDemo />
+        </section>
         <section className={styles.steps} id="how-it-works" aria-label="مسیر راه‌اندازی">
           <ol>
             <li>
+              <span className={styles.stepIcon}>
+                <LinkIcon size={25} aria-hidden="true" />
+              </span>
               <span className={styles.stepNumber}>۱</span>
               <div>
                 <h2>اتصال پیج</h2>
@@ -53,6 +83,9 @@ export default function Page() {
               </div>
             </li>
             <li>
+              <span className={styles.stepIcon}>
+                <MagnifyingGlassIcon size={25} aria-hidden="true" />
+              </span>
               <span className={styles.stepNumber}>۲</span>
               <div>
                 <h2>انتخاب کلمه</h2>
@@ -60,6 +93,9 @@ export default function Page() {
               </div>
             </li>
             <li>
+              <span className={styles.stepIcon}>
+                <PencilSimpleIcon size={25} aria-hidden="true" />
+              </span>
               <span className={styles.stepNumber}>۳</span>
               <div>
                 <h2>نوشتن پاسخ</h2>

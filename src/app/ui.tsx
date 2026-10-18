@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
+import { ArrowUpRightIcon } from '@phosphor-icons/react/dist/ssr/ArrowUpRight';
 export function Brand() {
   return (
     <a className="brand" href="/" aria-label="AiDirect، صفحهٔ اصلی">
       <span className="brand-mark" aria-hidden="true">
-        ↗
+        <ArrowUpRightIcon size={24} weight="bold" />
       </span>
       <span dir="ltr">
         ai<span className="brand-light">direct</span>

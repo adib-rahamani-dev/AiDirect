@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Brand } from './ui';
+import Image from 'next/image';
 
 export function AccessIcon({ name }: { name: 'arrow' | 'lock' | 'eye' | 'instagram' | 'check' }) {
   return (
@@ -88,36 +89,14 @@ export default function AccessFrame({
             <br />
             <span>ادامه‌اش، گفتگو.</span>
           </h2>
-          <div className="signal-art" aria-label="نمونهٔ تصویری مسیر کامنت به پاسخ خصوصی">
-            <div className="signal-stamp">
-              <span>نمونهٔ مسیر</span>
-              <b dir="ltr">↙</b>
-            </div>
-            <div className="signal-comment">
-              <span className="signal-number">01</span>
-              <div>
-                <small>کامنت زیر پست</small>
-                <strong>لینک</strong>
-              </div>
-              <span className="signal-cursor" aria-hidden="true" />
-            </div>
-            <div className="signal-connector" aria-hidden="true">
-              <span />
-              <b>↓</b>
-            </div>
-            <div className="signal-reply">
-              <span className="signal-number">02</span>
-              <div>
-                <small>پاسخ خصوصیِ از پیش نوشته‌شده</small>
-                <strong>بفرما، این هم لینک.</strong>
-              </div>
-              <AccessIcon name="arrow" />
-            </div>
-          </div>
-          <div className="editorial-bottomline">
-            <span>از کامنت تا گفتگو.</span>
-            <span dir="ltr">AiDirect / 01</span>
-          </div>
+          <Image
+            className="access-portrait"
+            src="/images/creator-hero-v2.webp"
+            width={1000}
+            height={750}
+            sizes="(max-width: 760px) 1px, 45vw"
+            alt=""
+          />
         </aside>
       </main>
       <footer className="access-footer">

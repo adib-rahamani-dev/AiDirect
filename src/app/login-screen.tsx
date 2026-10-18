@@ -72,7 +72,9 @@ export default function LoginScreen({
   return (
     <AccessFrame>
       <div className="access-heading">
-        <span className="access-kicker">فضای کار تو</span>
+        <span className="access-kicker">
+          {destination === '/admin' ? 'ورود مدیر' : 'فضای کار تو'}
+        </span>
         <h1>
           ادامهٔ گفتگو
           <br />

@@ -132,3 +132,17 @@ model SendboxWebhookEvent {
 
   @@index([expiresAt])
 }
+
+// Owner connection grant only; never an operator session or provider credential.
+model SendboxInvite {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  claimHash String?
+  expiresAt DateTime
+  claimedAt DateTime?
+  usedAt    DateTime?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([expiresAt])
+}

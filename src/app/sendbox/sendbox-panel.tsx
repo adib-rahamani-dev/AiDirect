@@ -128,6 +128,9 @@ export default function SendboxPanel() {
       }
     >
       <div className="access-heading">
+        <a className="access-text-button" href="/admin">
+          بازگشت به پنل مدیریت
+        </a>
         <span className="access-kicker">حساب اینستاگرام</span>
         <h1>
           {connected ? (

@@ -24,6 +24,7 @@ const incoming = (commentId = '3', text = 'لينك') => ({
   productType: 'FEED',
 });
 async function reset(enabled = true) {
+  await db.operationControl.deleteMany({ where: { id: 'proof' } });
   await db.delivery.deleteMany();
   await db.commentEvent.deleteMany();
   await db.proofRule.deleteMany();
@@ -75,6 +76,27 @@ function fake(onSend: () => Promise<void> = async () => {}, old = false): Instag
   };
 }
 test('Durable PostgreSQL proof pipeline', async (t) => {
+  await t.test('emergency stop prevents claiming and is rechecked before sending', async () => {
+    await reset();
+    await ingest([incoming()], 'simulation');
+    await db.operationControl.create({ data: { id: 'proof', paused: true } });
+    let sends = 0;
+    const adapter = fake(async () => {
+      sends++;
+    });
+    assert.equal(await tick(adapter), false);
+    assert.equal((await db.delivery.findFirstOrThrow()).status, 'pending');
+    await db.operationControl.update({ where: { id: 'proof' }, data: { paused: false } });
+    const originalComment = adapter.comment;
+    adapter.comment = async (...args) => {
+      await db.operationControl.update({ where: { id: 'proof' }, data: { paused: true } });
+      return originalComment(...args);
+    };
+    await tick(adapter);
+    assert.equal(sends, 0);
+    assert.equal((await db.delivery.findFirstOrThrow()).status, 'skipped');
+    await db.operationControl.deleteMany({ where: { id: 'proof' } });
+  });
   await t.test(
     'comments predating a new connection are skipped after reconnect or purge',
     async () => {

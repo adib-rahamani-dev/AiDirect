@@ -12,6 +12,8 @@ test('login destination rejects external, protocol-relative and encoded redirect
   assert.equal(loginDestination('/sendbox'), '/sendbox');
   assert.equal(loginDestination('/proof'), '/proof');
   assert.equal(loginDestination('/admin'), '/admin');
+  assert.equal(loginDestination('/admin/catalog'), '/admin/catalog');
+  assert.equal(loginDestination('/admin/operations'), '/admin/operations');
   for (const destination of [
     'https://attacker.example',
     '//attacker.example',

@@ -7,7 +7,7 @@ datasource db {
   provider = "postgresql"
 }
 
-// Phase 2: single operator proof. Customer accounts/tenancy start after real proof.
+// Legacy connection/delivery proof remains single-operator; catalog tenancy is separate.
 model ProofConnection {
   id                  String   @id @default("proof")
   accountId           String   @unique
@@ -145,4 +145,88 @@ model SendboxInvite {
   createdAt DateTime  @default(now())
 
   @@index([expiresAt])
+}
+
+// Catalog tenancy is independent of the legacy, single-operator connection proof.
+model User {
+  id          String       @id @default(cuid())
+  memberships Membership[]
+  createdAt   DateTime     @default(now())
+}
+
+model Workspace {
+  id          String        @id @default(cuid())
+  name        String
+  paused      Boolean       @default(false)
+  memberships Membership[]
+  pages       CatalogPage[]
+  createdAt   DateTime      @default(now())
+}
+
+enum WorkspaceRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+model Membership {
+  userId      String
+  workspaceId String
+  role        WorkspaceRole
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, workspaceId])
+}
+
+// A manually named catalog page is NOT an authenticated Instagram connection.
+model CatalogPage {
+  id          String           @id @default(cuid())
+  workspaceId String
+  name        String
+  handle      String
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  products    CatalogProduct[]
+  createdAt   DateTime         @default(now())
+
+  @@unique([id, workspaceId])
+  @@unique([workspaceId, handle])
+}
+
+model CatalogProduct {
+  id          String          @id @default(cuid())
+  workspaceId String
+  pageId      String
+  name        String
+  description String
+  category    String
+  priceToman  BigInt
+  stock       Int
+  active      Boolean         @default(true)
+  url         String
+  page        CatalogPage     @relation(fields: [pageId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  posts       MediaProduct[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([id, workspaceId, pageId])
+  @@index([workspaceId, pageId, active, priceToman])
+}
+
+model MediaProduct {
+  id          String         @id @default(cuid())
+  workspaceId String
+  pageId      String
+  productId   String
+  permalink   String
+  product     CatalogProduct @relation(fields: [productId, workspaceId, pageId], references: [id, workspaceId, pageId], onDelete: Cascade)
+
+  // Manual associations are for preview only until provider ownership is verified.
+  @@unique([workspaceId, pageId, productId, permalink])
+}
+
+model OperationControl {
+  id        String   @id @default("proof")
+  paused    Boolean  @default(false)
+  updatedAt DateTime @updatedAt
 }

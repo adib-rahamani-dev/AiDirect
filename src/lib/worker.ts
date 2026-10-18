@@ -10,6 +10,7 @@ export async function tick(
   adapter: InstagramAdapter = provider() === 'meta' ? metaAdapter : simulatedAdapter,
 ) {
   const now = new Date();
+  if ((await db.operationControl.findUnique({ where: { id: 'proof' } }))?.paused) return false;
   // A crashed worker may already have sent a message. These jobs are quarantined.
   await db.delivery.updateMany({
     where: { status: 'sending', leaseUntil: { lt: now } },
@@ -122,13 +123,17 @@ export async function tick(
       return true;
     }
     // Check switches a second time immediately before the irreversible API call.
-    const latestRule = await db.proofRule.findUnique({ where: { id: 'proof' } });
-    const latestConn = await db.proofConnection.findUnique({ where: { id: 'proof' } });
+    const [latestRule, latestConn, control] = await Promise.all([
+      db.proofRule.findUnique({ where: { id: 'proof' } }),
+      db.proofConnection.findUnique({ where: { id: 'proof' } }),
+      db.operationControl.findUnique({ where: { id: 'proof' } }),
+    ]);
     if (
       !latestRule?.enabled ||
       latestRule.mediaId !== job.mediaId ||
       latestConn?.status !== 'connected' ||
-      latestConn.accountId !== job.accountId
+      latestConn.accountId !== job.accountId ||
+      control?.paused
     ) {
       await finish('skipped');
       return true;

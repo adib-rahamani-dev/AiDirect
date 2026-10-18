@@ -189,6 +189,8 @@ export default function AdminPanel() {
       <aside className={styles.sidebar}>
         <Brand />
         <nav aria-label="بخش‌های مدیریت">
+          <a href="/admin/catalog">محصولات و دستیار فروش</a>
+          <a href="/admin/operations">عملیات و گزارش</a>
           <a href="#overview" aria-current="page">
             <SquaresFourIcon aria-hidden="true" size={22} weight="fill" />
             نمای کلی

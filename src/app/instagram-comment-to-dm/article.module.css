@@ -1,0 +1,50 @@
+.article {
+  max-width: 880px;
+}
+.article article > p,
+.article article li {
+  font-size: 16px;
+  line-height: 2.2;
+  color: #c7cec0;
+}
+.article article h1 {
+  font-size: clamp(26px, 3vw, 37px);
+  line-height: 1.8;
+}
+.article article h2 {
+  font-size: 23px;
+  margin-top: 38px;
+}
+.article article h3 {
+  font-size: 18px;
+  margin-top: 29px;
+}
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: #b5bcb0;
+  margin-bottom: 22px;
+}
+.next {
+  margin-top: 35px;
+  padding-top: 20px;
+  border-top: 1px solid #414a41;
+}
+.next p {
+  font-size: 16px;
+}
+.next a {
+  color: #17180e;
+  text-decoration: none;
+}
+@media (max-width: 760px) {
+  .article article > p,
+  .article article li {
+    font-size: 14px;
+  }
+  .article article h2 {
+    font-size: 21px;
+  }
+}

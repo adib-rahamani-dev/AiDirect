@@ -1,4 +1,5 @@
 import { Brand, LegalLinks } from '../ui';
+export const metadata = { title: 'حریم خصوصی نسخهٔ آزمایشی' };
 export default function Privacy() {
   const contact = process.env.PRIVACY_CONTACT_EMAIL;
   return (

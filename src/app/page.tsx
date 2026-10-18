@@ -8,10 +8,17 @@ import {
 import Image from 'next/image';
 import ConversationDemo from './conversation-demo';
 import styles from './landing.module.css';
+import { publicPageMetadata, serializeJsonLd, websiteStructuredData } from '@/lib/seo';
+
+export const metadata = publicPageMetadata('/');
 
 export default function Page() {
   return (
     <div className={styles.page}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(websiteStructuredData) }}
+      />
       <a className={styles.skip} href="#main">
         رفتن به محتوای اصلی
       </a>
@@ -49,7 +56,7 @@ export default function Page() {
               <span className={styles.headlineFirst}>هر کامنت،</span>
               <span className={styles.headlineSecond}>یک شروع تازه.</span>
             </h1>
-            <p className={styles.intro}>کلمه را تو انتخاب کن. پاسخ هم، با لحن خودت.</p>
+            <p className={styles.intro}>کامنت به دایرکت اینستاگرام، با کلمه و پاسخ خودت.</p>
             <a className={styles.primary} href="/admin">
               ورود و اتصال پیج <ArrowLeftIcon size={25} aria-hidden="true" />
             </a>
@@ -110,6 +117,7 @@ export default function Page() {
       </main>
       <footer className={styles.footer}>
         <nav aria-label="اطلاعات حقوقی">
+          <a href="/instagram-comment-to-dm">کامنت به دایرکت چیست؟</a>
           <a href="/privacy">حریم خصوصی</a>
           <a href="/data-deletion">درخواست حذف داده‌ها</a>
         </nav>

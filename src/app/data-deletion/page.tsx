@@ -1,4 +1,5 @@
 import { Brand, LegalLinks } from '../ui';
+export const metadata = { title: 'درخواست حذف داده‌ها' };
 export default function Deletion() {
   return (
     <>

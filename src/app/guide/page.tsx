@@ -1,4 +1,5 @@
 import { Brand, LegalLinks } from '../ui';
+export const metadata = { title: 'راهنمای آزمایش مستقیم Meta' };
 export default function Guide() {
   return (
     <>

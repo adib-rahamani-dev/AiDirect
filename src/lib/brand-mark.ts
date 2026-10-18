@@ -1,0 +1,4 @@
+// Generated from the existing Phosphor ArrowUpRight bold brand icon.
+// Static SVG data lets ImageResponse consume intrinsic SVG without React wrappers.
+export const brandArrowImage =
+  'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5NiIgaGVpZ2h0PSI5NiIgZmlsbD0iIzExMTcxMiIgdmlld0JveD0iMCAwIDI1NiAyNTYiPjxwYXRoIGQ9Ik0yMDQsNjRWMTY4YTEyLDEyLDAsMCwxLTI0LDBWOTNMNzIuNDksMjAwLjQ5YTEyLDEyLDAsMCwxLTE3LTE3TDE2Myw3Nkg4OGExMiwxMiwwLDAsMSwwLTI0SDE5MkExMiwxMiwwLDAsMSwyMDQsNjRaIj48L3BhdGg+PC9zdmc+';

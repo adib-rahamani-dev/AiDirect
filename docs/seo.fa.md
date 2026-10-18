@@ -77,3 +77,9 @@ node scripts/smoke-seo.mjs
 - راهنمای نصب‌شدهٔ Next.js 16.3.8 برای metadata، robots، sitemap، app icons و headers در node_modules/next/dist/docs.
 
 صفحهٔ Meta Private Replies در مرور این مرحله قابل خواندن نبود؛ مقاله هیچ endpoint، permission یا عدد زمانی تازه‌ای از حدس اضافه نمی‌کند و به مرجع اصلی لینک می‌دهد. قرارداد دقیق provider همچنان در بستهٔ اثبات بررسی می‌شود.
+
+## نتیجهٔ بررسی این انتشار
+
+۴۲ آزمون و build/CI موفق؛ ۸۰ بررسی محلی و ۷۹ بررسی HTTPS سئو موفق، همراه با ۳۵ بررسی HTTPS حساب/Sendbox برای رگرسیون. درخواست PageSpeed API پاسخ 403 داد؛ امتیاز عملکرد/CrUX اندازه‌گیری نشده است. ارزیابی بصری محلی در ۱۴۴۰، ۳۹۰ و ۳۲۰ پیکسل بدون overflow و خطای console بود. Search Console به درخواست مالک تعویق دارد. جزئیات commit و deployment در STATUS.md است.
+
+برای بررسی دستی عملکرد در آینده: [PageSpeed Insights](https://pagespeed.web.dev/analysis?url=https%3A%2F%2Faidirect-kappa.vercel.app%2F). این لینک، نتیجه یا نمرهٔ ازقبل تأییدشده نیست.

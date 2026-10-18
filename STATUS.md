@@ -40,8 +40,8 @@ CI کد برنامه **۳۵/۳۵ موفق** بود؛ typecheck، build و audit 
 | --------------- | ------------------------------------------------------------------- |
 | پروژه / تیم     | aidirect / rahmaniadib17-5888s-projects                             |
 | محیط پلتفرم     | production؛ کاربرد محصول، آزمایش محدود است                          |
-| شناسهٔ استقرار  | dpl_8LU7yQUVPM6iBaUv1imC9NV6Gk7i                                    |
-| commit کد مستقر | 901464e (کد برنامه و بستهٔ انتشار؛ گزارش بعدی جداست)                |
+| شناسهٔ استقرار  | dpl_7Kf8caaj1oM9VHiCMT5Gswu5nNSg                                    |
+| commit کد مستقر | 8eb4fe3 (سئوی فنی و backlog؛ گزارش بعدی جداست)                      |
 | ساخت            | READY؛ Next.js 16.3.8، Node 24، build Vercel حدود ۱۳ ثانیه          |
 | دیتابیس         | Neon aidirect-test-db / free_v3؛ برنامه neondb، آزمون aidirect_test |
 | migration       | هر شش migration روی DB برنامه اعمال شد                              |
@@ -124,3 +124,16 @@ User/Workspace/Membership، جداسازی مشتری‌ها، callback رسمی
 سئوی صفحات عمومی، canonical، sitemap/robots، JSON-LD معتبر بدون ratings/offer جعلی، تصویر اشتراک و آیکن، 404 و noindex/no-store مسیرهای حساب پیاده شدند. no-store عمومی برداشته و حفاظت API/حساب حفظ شد. **ثبت و تأیید Search Console به درخواست مالک فعلاً تعویق افتاده است.**
 
 ۴۲ آزمون روی DB آزمون جدا، صفر شکست؛ ساخت محلی موفق. ۸۰ بررسی SEO محلی موفق، شامل Host canonical/noncanonical، sitemap محدود به صفحات عمومی، متادیتا، حفظ احراز هویت و ابعاد PNG. نتیجهٔ انتشار و بررسی HTTPS همین تغییر در ادامه ثبت می‌شود. PageSpeed/Core Web Vitals هنوز اندازه‌گیری‌شده گزارش نشده‌اند.
+
+## نتیجهٔ انتشار سئو و backlog
+
+- کد مستقر `8eb4fe3788f7d6accf8c3308b12385dab8260792`؛ استقرار `dpl_7Kf8caaj1oM9VHiCMT5Gswu5nNSg`، READY، production، Next.js 16.3.8 / Node 24؛ build Vercel حدود ۱۵ثانیه. دامنهٔ اصلی به همین نسخه alias شد.
+- [CI کد مستقر](https://github.com/adib-rahamani-dev/AiDirect/actions/runs/39150566937): ۴۲ آزمون، typecheck، build و audit موفق. check:secrets و format نیز موفق؛ بستهٔ انتشار فقط export فایل‌های tracked بود.
+- staged: robots و sitemap پاسخ 200، دو URL عمومیِ canonical، Host استقرار غیرcanonical دارای X-Robots-Tag: noindex؛ سپس promote و alias انجام شد.
+- canonical: **۷۹ بررسی HTTPS سئو** و **۳۵ بررسی HTTPS حساب/Sendbox** موفق. عنوان، description، robots، canonical، schema، تصاویر PNG با ابعاد دقیق، 404، noindex/no-store تمام مسیرهای حساب و حفظ پاسخ 401 API بررسی شدند. هیچ دعوت یا اتصال مشتری به‌قصد آزمون سئو تغییر نکرد.
+- مرورگر محلی: لندینگ و راهنما، لینک داخلی، عنوان، متن صداقت محصول، موبایل ۳۹۰، باریک ۳۲۰ و دسکتاپ ۱۴۴۰؛ بدون overflow افقی و بدون خطای console. شواهد local-evidence/seo-guide-desktop.png، seo-guide-mobile.png و seo-home-mobile.png؛ تصویر اشتراک در .local/seo-social-card.png بررسی شد. این‌ها QA بصری محلی‌اند.
+- query محدود error لاگ استقرار در ۱۵دقیقهٔ اخیر صفر رکورد داشت؛ پایش دائمی اضافه نشده است.
+- درخواست واقعی به PageSpeed Insights API برای URL عمومی، پاسخ **403** داد. هیچ نمرهٔ Lighthouse، سرعت یا Core Web Vitals به‌عنوان اندازه‌گیری موفق گزارش نمی‌شود؛ علت 403 حدس زده نشده است. ارزیابی عملکرد بیرونی هنوز باز است.
+- **Search Console طبق درخواست مالک فعلاً انجام نمی‌شود.** کد متاتگ آماده و تنظیم خالی است؛ ثبت sitemap در Google، تأیید مالکیت و ایندکس واقعی ادعا نمی‌شوند. هیچ tracker، خرید سرویس یا دامنهٔ پولی اضافه نشد.
+
+اولویت توسعهٔ بعدی مطابق backlog: اثبات اتصال/کامنت/پاسخ خصوصی واقعی، سپس صف Sendbox و بعد جداسازی مشتری‌ها. SEO ارسال واقعی را فعال نکرده است.

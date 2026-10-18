@@ -13,15 +13,25 @@ const config: NextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
         ],
       },
-      ...['api', 'admin', 'proof', 'sendbox', 'connect', 'guide', 'privacy', 'data-deletion'].map(
-        (prefix) => ({
-          source: `/${prefix}/:path*`,
-          headers: [
-            { key: 'Cache-Control', value: 'no-store' },
-            { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
-          ],
-        }),
-      ),
+      ...[
+        'api',
+        'admin',
+        'dashboard',
+        'login',
+        'signup',
+        'proof',
+        'sendbox',
+        'connect',
+        'guide',
+        'privacy',
+        'data-deletion',
+      ].map((prefix) => ({
+        source: `/${prefix}/:path*`,
+        headers: [
+          { key: 'Cache-Control', value: 'no-store' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+        ],
+      })),
       {
         source: '/:path*',
         missing: [

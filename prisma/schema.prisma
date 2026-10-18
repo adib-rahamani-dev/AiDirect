@@ -150,14 +150,31 @@ model SendboxInvite {
 // Catalog tenancy is independent of the legacy, single-operator connection proof.
 model User {
   id          String       @id @default(cuid())
+  name        String       @default("")
+  email       String?      @unique
+  emailVerified Boolean    @default(false)
+  image       String?
+  platformRole PlatformRole @default(CUSTOMER)
+  suspended   Boolean      @default(false)
+  updatedAt   DateTime     @default(now()) @updatedAt
   memberships Membership[]
+  sessions    Session[]
+  accounts    Account[]
+  ownedWorkspace Workspace? @relation("WorkspaceOwner")
   createdAt   DateTime     @default(now())
+}
+
+enum PlatformRole {
+  CUSTOMER
+  SENIOR_ADMIN
 }
 
 model Workspace {
   id          String        @id @default(cuid())
   name        String
   paused      Boolean       @default(false)
+  ownerId     String?       @unique
+  owner       User?         @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   memberships Membership[]
   pages       CatalogPage[]
   createdAt   DateTime      @default(now())
@@ -229,4 +246,64 @@ model OperationControl {
   id        String   @id @default("proof")
   paused    Boolean  @default(false)
   updatedAt DateTime @updatedAt
+}
+
+// Better Auth core models. Instagram credentials remain in their separate adapter.
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model Account {
+  id                    String   @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  @@index([identifier])
+}
+
+model AuthThrottle {
+  key       String @id
+  count     Int
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+
+model AdminAudit {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  targetId  String
+  detail    String
+  createdAt DateTime @default(now())
+  @@index([createdAt])
 }

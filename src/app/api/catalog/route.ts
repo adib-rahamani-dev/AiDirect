@@ -1,8 +1,8 @@
-import { requireOperator, requireOrigin } from '@/lib/auth';
+import { requireOrigin } from '@/lib/auth';
+import { catalogActor, defaultWorkspace } from '@/lib/platform-access';
 import {
   catalogSnapshot,
   catalogMutation,
-  operatorCatalogIdentity,
   CatalogError,
   previewRecommendation,
 } from '@/lib/catalog';
@@ -34,10 +34,12 @@ function failure(error: unknown) {
 }
 export async function GET(request: Request) {
   try {
-    await requireOperator();
-    const userId = await operatorCatalogIdentity();
+    const { id: userId } = await catalogActor(
+      request.headers,
+      new URL(request.url).pathname.startsWith('/api/customer/'),
+    );
     const url = new URL(request.url);
-    const workspaceId = url.searchParams.get('workspace') || 'operator-catalog';
+    const workspaceId = url.searchParams.get('workspace') || (await defaultWorkspace(userId));
     const data = await catalogSnapshot(userId, workspaceId);
     if (url.searchParams.get('format') === 'csv') {
       const rows = [
@@ -74,11 +76,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     requireOrigin(request);
-    await requireOperator();
+    const { id: userId } = await catalogActor(
+      request.headers,
+      new URL(request.url).pathname.startsWith('/api/customer/'),
+    );
     const input = await readJson(request, 12000);
-    const userId = await operatorCatalogIdentity();
     const workspaceId =
-      typeof input.workspaceId === 'string' ? input.workspaceId : 'operator-catalog';
+      typeof input.workspaceId === 'string' ? input.workspaceId : await defaultWorkspace(userId);
     const result =
       input.action === 'preview'
         ? await previewRecommendation(userId, workspaceId, input.data)

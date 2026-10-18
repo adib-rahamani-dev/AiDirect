@@ -65,6 +65,8 @@ try {
   try {
     await client.query('BEGIN');
     await client.query('DELETE FROM "OperatorSession"');
+    await client.query('DELETE FROM "Session"');
+    await client.query('DELETE FROM "Verification"');
     await client.query('DELETE FROM "OAuthAttempt"');
     await client.query('DELETE FROM "ConnectionInvite"');
     await client.query('DELETE FROM "SendboxInvite"');

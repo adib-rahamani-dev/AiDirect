@@ -21,7 +21,8 @@ type Snapshot = {
   products: Product[];
 };
 type Preview = { status: string; reply: string; mode: string };
-export default function CatalogPanel() {
+export default function CatalogPanel({ customer = false }: { customer?: boolean }) {
+  const endpoint = customer ? '/api/customer/catalog' : '/api/catalog';
   const [data, setData] = useState<Snapshot | null>(null);
   const [pageId, setPageId] = useState('');
   const [busy, setBusy] = useState(false);
@@ -31,23 +32,26 @@ export default function CatalogPanel() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const pending = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
-  const load = useCallback(async (signal?: AbortSignal) => {
-    const response = await fetch('/api/catalog', {
-      signal: signal ?? AbortSignal.timeout(20000),
-      cache: 'no-store',
-    });
-    if (!response.ok)
-      throw new Error(
-        response.status === 401
-          ? 'نشست تمام شده؛ از پنل مدیریت دوباره وارد شو.'
-          : 'دریافت کاتالوگ کامل نشد. دوباره تلاش کن.',
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      const response = await fetch(endpoint, {
+        signal: signal ?? AbortSignal.timeout(20000),
+        cache: 'no-store',
+      });
+      if (!response.ok)
+        throw new Error(
+          response.status === 401
+            ? 'نشست تمام شده؛ از پنل مدیریت دوباره وارد شو.'
+            : 'دریافت کاتالوگ کامل نشد. دوباره تلاش کن.',
+        );
+      const snapshot: Snapshot = await response.json();
+      setData(snapshot);
+      setPageId((current) =>
+        snapshot.pages.some((p) => p.id === current) ? current : (snapshot.pages[0]?.id ?? ''),
       );
-    const snapshot: Snapshot = await response.json();
-    setData(snapshot);
-    setPageId((current) =>
-      snapshot.pages.some((p) => p.id === current) ? current : (snapshot.pages[0]?.id ?? ''),
-    );
-  }, []);
+    },
+    [endpoint],
+  );
   useEffect(() => {
     const controller = new AbortController();
     void load(controller.signal).catch((e: Error) => {
@@ -61,7 +65,7 @@ export default function CatalogPanel() {
     setBusy(true);
     setMessage('');
     try {
-      const response = await fetch('/api/catalog', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workspaceId: data?.workspace.id, action, ...fields }),
@@ -128,11 +132,12 @@ export default function CatalogPanel() {
       <header className={styles.header}>
         <Brand />
         <nav aria-label="مدیریت">
-          <a href="/admin">نمای کلی</a>
-          <a href="/admin/catalog" aria-current="page">
+          <a href={customer ? '/dashboard' : '/admin'}>{customer ? 'پنل من' : 'نمای کلی'}</a>
+          <a href={customer ? '/dashboard/catalog' : '/admin/catalog'} aria-current="page">
             محصولات
           </a>
-          <a href="/admin/operations">عملیات و گزارش</a>
+          {!customer && <a href="/admin/operations">عملیات و گزارش</a>}
+          {customer && <a href="/dashboard/settings">تنظیمات حساب</a>}
         </nav>
       </header>
       <main className={styles.main}>
@@ -185,7 +190,7 @@ export default function CatalogPanel() {
                   ))}
                 </select>
               </label>
-              <a className={styles.link} href="/api/catalog?format=csv">
+              <a className={styles.link} href={endpoint + '?format=csv'}>
                 دریافت CSV کاتالوگ
               </a>
               <button

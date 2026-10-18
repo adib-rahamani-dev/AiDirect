@@ -167,7 +167,10 @@ export default function LoginScreen({
           </p>
         </div>
       </form>
-      <p className="access-footnote">دسترسی این نسخه با دعوت مدیر است.</p>
+      <p className="access-footnote">
+        ورود مدیریت سرویس · مشتری هستی؟ <a href="/login">ورود به حساب</a> یا{' '}
+        <a href="/signup">ثبت‌نام</a>
+      </p>
     </AccessFrame>
   );
 }

@@ -3,6 +3,7 @@ export function loginDestination(value: unknown) {
   return value === '/' ||
     value === '/proof' ||
     value === '/admin' ||
+    value === '/admin/users' ||
     value === '/admin/catalog' ||
     value === '/admin/operations'
     ? value

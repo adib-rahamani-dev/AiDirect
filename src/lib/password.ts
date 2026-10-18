@@ -11,6 +11,14 @@ const derive = (password: string, salt: Buffer) =>
   );
 export async function hashPassword(password: string) {
   if (password.length < 12 || password.length > 256) throw new Error('password_length');
+  return encodePassword(password);
+}
+// Explicit owner configuration is separate from the public registration policy.
+export async function hashConfiguredOwnerPassword(password: string) {
+  if (password.length < 8 || password.length > 256) throw new Error('password_length');
+  return encodePassword(password);
+}
+async function encodePassword(password: string) {
   const salt = randomBytes(16);
   return `scrypt-v1.${salt.toString('hex')}.${(await derive(password, salt)).toString('hex')}`;
 }

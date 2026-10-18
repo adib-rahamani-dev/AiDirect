@@ -19,6 +19,7 @@ import Image from 'next/image';
 import { Brand } from '../ui';
 import LoginScreen from '../login-screen';
 import styles from './admin.module.css';
+import ServiceOverview from './service-overview';
 
 type Invite = {
   id: string;
@@ -189,6 +190,7 @@ export default function AdminPanel() {
       <aside className={styles.sidebar}>
         <Brand />
         <nav aria-label="بخش‌های مدیریت">
+          <a href="/admin/users">کاربران و دسترسی‌ها</a>
           <a href="/admin/catalog">محصولات و دستیار فروش</a>
           <a href="/admin/operations">عملیات و گزارش</a>
           <a href="#overview" aria-current="page">
@@ -260,6 +262,7 @@ export default function AdminPanel() {
             </button>
           </div>
         )}
+        <ServiceOverview />
         <section className={styles.welcome} aria-labelledby="connection-title">
           <Image
             className={styles.bannerArt}

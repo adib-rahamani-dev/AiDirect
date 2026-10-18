@@ -35,7 +35,7 @@ export default function Page() {
           <a className={styles.howLink} href="#how-it-works">
             روش کار
           </a>
-          <a className={styles.loginLink} href="/admin">
+          <a className={styles.loginLink} href="/login">
             ورود به حساب <ArrowUpRightIcon size={19} aria-hidden="true" />
           </a>
         </nav>
@@ -57,8 +57,8 @@ export default function Page() {
               <span className={styles.headlineSecond}>یک شروع تازه.</span>
             </h1>
             <p className={styles.intro}>کامنت به دایرکت اینستاگرام، با کلمه و پاسخ خودت.</p>
-            <a className={styles.primary} href="/admin">
-              ورود و اتصال پیج <ArrowLeftIcon size={25} aria-hidden="true" />
+            <a className={styles.primary} href="/signup">
+              ساخت حساب رایگان <ArrowLeftIcon size={25} aria-hidden="true" />
             </a>
             <p className={styles.beta}>نسخهٔ آزمایشی؛ ارسال خودکار هنوز فعال نیست.</p>
           </div>

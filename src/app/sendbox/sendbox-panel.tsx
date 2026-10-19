@@ -233,7 +233,8 @@ export default function SendboxPanel() {
             {connected && (
               <div className="account-send-status">
                 <span className="account-status-dot" />
-                ارسال خودکار فعلاً غیرفعال است.
+                پاسخ خصوصی کامنت فعلاً غیرفعال است.{' '}
+                <a href="/admin/inbox">مدیریت پاسخ دایرکت آزمایشی</a>
               </div>
             )}
             <div className="account-activity">

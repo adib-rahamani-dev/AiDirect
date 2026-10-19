@@ -2,7 +2,10 @@ import { db } from '@/lib/db';
 import { encrypt } from '@/lib/crypto';
 import { parseSendboxEvent, validSendboxSignature } from '@/lib/sendbox';
 import { expireSendboxEvidence } from '@/lib/sendbox-store';
+import { enqueueDm, tickDm } from '@/lib/sendbox-dm';
+import { after } from 'next/server';
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 export async function POST(request: Request) {
   const secret = process.env.SENDBOX_WEBHOOK_SECRET;
   if (!secret) return new Response('Not configured', { status: 503 });
@@ -43,12 +46,25 @@ export async function POST(request: Request) {
     const connection = await db.sendboxConnection.findUnique({ where: { id: 'proof' } });
     if (!connection || connection.accountId !== event.account_id || connection.expiresAt <= now)
       return new Response('IGNORED', { status: 200 });
+    if (event.event_type === 'messaging') {
+      const created = await enqueueDm(connection.accountId, event.data);
+      if (created)
+        after(async () => {
+          try {
+            await tickDm();
+          } catch {
+            /* Durable pending jobs remain for recovery. */
+          }
+        });
+      return new Response('DM_RECORDED', { status: 200 });
+    }
     if (
       ![
         'comments',
         'action.private_reply',
         'action.list_posts',
         'action.comment_comments',
+        'action.send_message',
       ].includes(event.event_type)
     )
       return new Response('IGNORED', { status: 200 });
@@ -67,7 +83,7 @@ export async function POST(request: Request) {
       ],
       skipDuplicates: true,
     });
-    // This stage only records signed evidence. It never dispatches a message.
+    // Action callbacks are evidence, not inbound messages or a trigger for another response.
     return new Response('EVENT_STORED', { status: 200 });
   } catch {
     return new Response('Storage unavailable', { status: 503 });

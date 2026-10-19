@@ -193,6 +193,7 @@ export default function AdminPanel() {
           <a href="/admin/users">کاربران و دسترسی‌ها</a>
           <a href="/admin/catalog">محصولات و دستیار فروش</a>
           <a href="/admin/analytics">آمار و تحلیل کاتالوگ</a>
+          <a href="/admin/inbox">پاسخ دایرکت آزمایشی</a>
           <a href="/admin/operations">عملیات و گزارش</a>
           <a href="#overview" aria-current="page">
             <SquaresFourIcon aria-hidden="true" size={22} weight="fill" />
@@ -344,8 +345,10 @@ export default function AdminPanel() {
           <div>
             <PaperPlaneTiltIcon aria-hidden="true" size={29} />
             <p>
-              <strong className={styles.noSending}>ارسال غیرفعال</strong>
-              <span>در مرحلهٔ اثبات اتصال</span>
+              <strong className={styles.noSending}>پاسخ کامنت غیرفعال</strong>
+              <span>
+                <a href="/admin/inbox">وضعیت پاسخ دایرکت ←</a>
+              </span>
             </p>
           </div>
         </section>
@@ -478,7 +481,8 @@ export default function AdminPanel() {
         </div>
         <footer className={styles.footer}>
           <InfoIcon aria-hidden="true" size={17} />
-          دریافت رویداد، ارسال پیام را ثابت نمی‌کند. ارسال پاسخ واقعی هنوز فعال نیست.
+          دریافت رویداد، ارسال پیام را ثابت نمی‌کند. پاسخ خصوصی کامنت هنوز فعال نیست؛ پاسخ دایرکت از
+          بخش «پاسخ دایرکت آزمایشی» مدیریت می‌شود.
         </footer>
       </main>
     </div>

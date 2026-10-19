@@ -1,0 +1,100 @@
+.main {
+  max-width: 1050px;
+  margin: auto;
+  padding: 32px 20px 80px;
+  color: #ecece4;
+}
+.main nav,
+.actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.main nav a {
+  color: #dfef91;
+}
+.main header {
+  padding: 54px 0 24px;
+}
+.main h1 {
+  font-size: clamp(30px, 5vw, 52px);
+  letter-spacing: -1px;
+}
+.main h2 {
+  font-size: 21px;
+}
+.main p {
+  color: #bfc1b6;
+  line-height: 2;
+}
+.main section {
+  padding: 26px;
+  margin: 24px 0;
+  border: 1px solid #3b3e32;
+  border-radius: 20px;
+  background: #1b1d17;
+}
+.main select {
+  width: 100%;
+  margin: 12px 0;
+  padding: 14px;
+  background: #10120d;
+  color: #ecece4;
+  border: 1px solid #61674c;
+  border-radius: 10px;
+  font: inherit;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  line-height: 2;
+  margin: 20px 0;
+}
+.check input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.actions button {
+  font: inherit;
+  padding: 12px 18px;
+  min-height: 46px;
+  border-radius: 12px;
+  border: 1px solid #ddeb90;
+  background: #ddeb90;
+  color: #171b0d;
+  cursor: pointer;
+}
+.actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.actions button:focus-visible,
+.main select:focus-visible,
+.check input:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 4px;
+}
+.table {
+  overflow-x: auto;
+}
+.main table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: right;
+}
+.main th,
+.main td {
+  padding: 14px 8px;
+  border-bottom: 1px solid #3b3e32;
+  font-size: 13px;
+}
+@media (max-width: 600px) {
+  .main {
+    padding: 20px 14px;
+  }
+  .main section {
+    padding: 18px;
+  }
+}

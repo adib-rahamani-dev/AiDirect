@@ -119,6 +119,7 @@ model SendboxConnection {
   expiresAt   DateTime
   connectedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  dmSettings  SendboxDmSettings?
 }
 
 // Short-lived encrypted evidence; receiving an action result is not proof of delivery.
@@ -205,6 +206,7 @@ model CatalogPage {
   workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   products    CatalogProduct[]
   createdAt   DateTime         @default(now())
+  dmSettings  SendboxDmSettings[]
 
   @@unique([id, workspaceId])
   @@unique([workspaceId, handle])
@@ -306,4 +308,42 @@ model AdminAudit {
   detail    String
   createdAt DateTime @default(now())
   @@index([createdAt])
+}
+
+// Limited owner-operated DM pilot; not customer Instagram tenancy.
+model SendboxDmSettings {
+  accountId    String @id
+  connection   SendboxConnection @relation(fields: [accountId], references: [accountId], onDelete: Cascade)
+  workspaceId  String
+  pageId       String
+  page         CatalogPage @relation(fields: [pageId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  enabled      Boolean @default(false)
+  shorthandMillions Boolean @default(false)
+  revision     String
+  enabledSince DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SendboxDmDelivery {
+  id            String @id @default(cuid())
+  accountId     String
+  messageHash   String
+  senderHash    String
+  revision      String
+  payloadCipher String?
+  status        String @default("pending")
+  errorKind     String?
+  attempts      Int @default(0)
+  leaseToken    String?
+  leaseUntil    DateTime?
+  nextAttemptAt DateTime @default(now())
+  receivedAt    DateTime @default(now())
+  inboundAt     DateTime
+  expiresAt     DateTime
+  updatedAt     DateTime @updatedAt
+
+  @@unique([accountId, messageHash])
+  @@index([status, nextAttemptAt])
+  @@index([expiresAt])
+  @@index([accountId, senderHash, receivedAt])
 }

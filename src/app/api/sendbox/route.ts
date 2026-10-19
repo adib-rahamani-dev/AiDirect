@@ -56,6 +56,14 @@ export async function POST(request: Request) {
     if (input.action === 'disconnect') {
       // Local deletion only; remote revocation is available in the provider panel.
       await db.$transaction([
+        db.sendboxDmDelivery.updateMany({
+          where: { status: { in: ['pending', 'sending'] } },
+          data: { status: 'suppressed', errorKind: 'disconnected', payloadCipher: null },
+        }),
+        db.sendboxDmDelivery.updateMany({
+          data: { payloadCipher: null },
+          where: { payloadCipher: { not: null } },
+        }),
         db.sendboxWebhookEvent.deleteMany(),
         db.sendboxConnection.deleteMany(),
       ]);

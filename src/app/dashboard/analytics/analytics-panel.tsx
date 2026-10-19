@@ -7,6 +7,7 @@ import styles from './analytics.module.css';
 type Data = AnalyticsSnapshot & { ai: { mode: string; configured: boolean; enabled: boolean } };
 type AiReport = {
   source: 'external_ai';
+  mode: 'ai_prioritized_rules';
   provider: 'groq';
   generatedAt: string;
   summary: string;
@@ -309,7 +310,7 @@ export default function AnalyticsPanel({ customer = false }: { customer?: boolea
             <section className={base.panel}>
               <div className={styles.aiHeading}>
                 <div>
-                  <span className={base.eyebrow}>تحلیل زبانی اختیاری</span>
+                  <span className={base.eyebrow}>اولویت‌بندی اختیاری با مدل</span>
                   <h2>نگاه دوم با هوش مصنوعی</h2>
                 </div>
                 <span className={styles.badge}>
@@ -323,7 +324,8 @@ export default function AnalyticsPanel({ customer = false }: { customer?: boolea
               <p>
                 آمار و پیشنهادهای بالا داخل پروژه محاسبه می‌شوند. این بخش، در صورت فعال‌سازی، فقط
                 شمارش‌های تجمیعی و کد پیشنهادها را به Groq می‌فرستد؛ نام، ایمیل، پیج، متن دایرکت،
-                محصول، قیمت و توکن ارسال نمی‌شوند.
+                محصول، قیمت و توکن ارسال نمی‌شوند. مدل فقط اقدام‌ها را اولویت‌بندی می‌کند؛ آمار و
+                متن توضیحات از قواعد برنامه می‌آیند.
               </p>
               {data.ai.mode !== 'available' && (
                 <p>
@@ -353,7 +355,7 @@ export default function AnalyticsPanel({ customer = false }: { customer?: boolea
               {report && (
                 <div className={styles.report}>
                   <span>
-                    پاسخ واقعی مدل Groq ·{' '}
+                    اولویت‌بندی واقعی Groq · توضیحات از قواعد برنامه ·{' '}
                     {new Date(report.generatedAt).toLocaleString('fa-IR', {
                       timeZone: 'Asia/Tehran',
                     })}

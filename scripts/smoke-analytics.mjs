@@ -178,6 +178,8 @@ try {
           generatedAt: output.generatedAt,
           error: output.error,
           providerStatus: output.providerStatus,
+          failureKind: output.failureKind,
+          mode: output.mode,
           scope: 'synthetic_fixture_aggregate_only',
         },
         null,
@@ -185,7 +187,10 @@ try {
       ),
     );
     check(
-      response.status === 200 && output.source === 'external_ai' && output.focus.length > 0,
+      response.status === 200 &&
+        output.source === 'external_ai' &&
+        output.mode === 'ai_prioritized_rules' &&
+        output.focus.length > 0,
       'Real provider analysis',
     );
   } else if (report.ai.mode === 'disabled')

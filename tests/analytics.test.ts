@@ -137,8 +137,7 @@ test('AI SDK adapter projects only counters, validates evidence, disables retrie
     enabled = process.env.GROQ_CUSTOMER_ANALYSIS_ENABLED;
   let calls = 0;
   const good = {
-    summary: 'موجودی و توضیح محصولات را پیش از تست پیشنهاد بررسی کن.',
-    focus: [{ suggestionId: 'stock', reason: 'محصول ناموجود را اصلاح یا غیرفعال کن.' }],
+    priorities: ['stock', 'description'],
   };
   const response = (output: unknown) =>
     Response.json({
@@ -175,13 +174,18 @@ test('AI SDK adapter projects only counters, validates evidence, disables retrie
     assert.equal(analysisFacts(sample()).canMeasureSales, false);
     const report = await generateCatalogAnalysis(sample(), fetcher);
     assert.equal(report.source, 'external_ai');
+    assert.equal(report.mode, 'ai_prioritized_rules');
+    assert.equal(
+      report.focus[0].reason,
+      sample().suggestions.find((s) => s.id === 'stock')?.detail,
+    );
     assert.equal(calls, 1);
     await assert.rejects(
       () =>
         generateCatalogAnalysis(sample(), async () =>
           response({
             ...good,
-            focus: [{ suggestionId: 'invented_sales', reason: 'not grounded' }],
+            priorities: ['invented_sales'],
           }),
         ),
       { message: 'ai_unavailable', failureKind: 'invalid_structure' },
@@ -191,8 +195,12 @@ test('AI SDK adapter projects only counters, validates evidence, disables retrie
         generateCatalogAnalysis(sample(), async () =>
           response({ ...good, summary: 'فروش ۹۰ درصد رشد کرد' }),
         ),
-      { message: 'ai_unavailable', failureKind: 'ai_invalid_output' },
+      { message: 'ai_unavailable', failureKind: 'invalid_structure' },
     );
+    const deduplicated = await generateCatalogAnalysis(sample(), async () =>
+      response({ priorities: ['stock', 'stock'] }),
+    );
+    assert.equal(deduplicated.focus.length, 1);
     let rateCalls = 0;
     await assert.rejects(
       () =>

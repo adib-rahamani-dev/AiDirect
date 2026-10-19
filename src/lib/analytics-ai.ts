@@ -40,16 +40,8 @@ export async function generateCatalogAnalysis(
   if (!ids.length) throw new Error('ai_no_evidence');
   const schema = z
     .object({
-      summary: z.string().min(10).max(240),
-      focus: z
-        .array(
-          z
-            .object({
-              suggestionId: z.enum(ids as [(typeof ids)[number], ...typeof ids]),
-              reason: z.string().min(5).max(160),
-            })
-            .strict(),
-        )
+      priorities: z
+        .array(z.enum(ids as [(typeof ids)[number], ...typeof ids]))
         .min(1)
         .max(2),
     })
@@ -83,31 +75,30 @@ export async function generateCatalogAnalysis(
   try {
     const result = await generateText({
       model: provider('openai/gpt-oss-20b'),
-      maxOutputTokens: 1800,
+      maxOutputTokens: 1000,
       maxRetries: 0,
       abortSignal: AbortSignal.timeout(15000),
       telemetry: { isEnabled: false, recordInputs: false, recordOutputs: false },
       output: Output.object({ schema }),
       providerOptions: { groq: { reasoningEffort: 'low' } },
       system:
-        'به فارسی ساده و کوتاه، فقط دو قدم قابل اقدام برای همین کاتالوگ توضیح بده. ورودی فقط شمارش کاتالوگ است؛ دادهٔ فروش، جستجو، تقاضا، اتصال یا گفتگو نداریم. فقط از suggestionIds موجود انتخاب کن. معنای دقیق کدها: add_products=ثبت محصول واقعی در کاتالوگ خالی؛ stock=اصلاح موجودی محصول فعالِ ناموجود؛ description=تکمیل توضیح کوتاه یا خالی محصول؛ post_mapping=ثبت ارتباط دستی لینک پست یا ریلز اینستاگرام با محصول کاتالوگ، ربطی به دسته‌بندی یا رتبهٔ جستجو ندارد؛ paused=برداشتن توقف پیشنهادهای داخلی پس از بازبینی؛ test_catalog=آزمایش محلی پیشنهاد محصول با بودجه و دستهٔ مشخص، بدون ارسال دایرکت و بدون انتشار کاتالوگ جدید. خلاصه یک جمله و دلیل هر قدم یک جمله باشد. درآمد، نرخ تبدیل، رشد، نتیجهٔ جستجو یا افزایش فروش نساز و تضمین نکن. هیچ رقم، قیمت، URL یا HTML ننویس. ابزار یا مجوز اجرای تغییر نداری. Return only JSON matching the schema.',
+        'Rank up to two distinct existing suggestionIds by usefulness for the supplied numeric catalog evidence. Return JSON with priorities only. No free text, new actions, statistics or explanations. We do not have sales, search, demand or Instagram conversation data. Meanings: add_products=create real catalog products when empty; stock=fix active products with zero stock; description=complete missing/short product descriptions; post_mapping=manually associate an Instagram post/reel URL with a catalog product, never publishing anything; paused=review before resuming internal recommendations; test_catalog=test local budget-based recommendations, never sending a DM. Prioritize a paused workspace and stock problems over optional testing. You cannot execute actions.',
       prompt: JSON.stringify(analysisFacts(snapshot)),
     });
     const output = schema.parse(result.output);
-    if (new Set(output.focus.map((f) => f.suggestionId)).size !== output.focus.length)
-      throw new Error('ai_duplicate_focus');
-    if (
-      /[0-9۰-۹٠-٩<>]|https?:|www\./i.test(
-        output.summary + ' ' + output.focus.map((f) => f.reason).join(' '),
-      )
-    )
-      throw new Error('ai_invalid_output');
+    const focus = [...new Set(output.priorities)].map((suggestionId) => ({
+      suggestionId,
+      reason: snapshot.suggestions.find((s) => s.id === suggestionId)!.detail,
+    }));
     return {
       source: 'external_ai' as const,
+      mode: 'ai_prioritized_rules' as const,
       provider: 'groq' as const,
       model: 'openai/gpt-oss-20b',
       generatedAt: new Date().toISOString(),
-      ...output,
+      summary:
+        'مدل از میان اقدام‌های معتبر کاتالوگ، این موارد را برای بررسی زودتر انتخاب کرده است. توضیحات از قواعد برنامه هستند؛ این اولویت‌بندی تضمین نتیجه نیست.',
+      focus,
     };
   } catch (error) {
     // No SDK error payload or prompt reaches the response/logs.

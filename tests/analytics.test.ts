@@ -184,14 +184,14 @@ test('AI SDK adapter projects only counters, validates evidence, disables retrie
             focus: [{ suggestionId: 'invented_sales', reason: 'not grounded' }],
           }),
         ),
-      { message: 'ai_unavailable' },
+      { message: 'ai_unavailable', failureKind: 'invalid_structure' },
     );
     await assert.rejects(
       () =>
         generateCatalogAnalysis(sample(), async () =>
           response({ ...good, summary: 'فروش ۹۰ درصد رشد کرد' }),
         ),
-      { message: 'ai_unavailable' },
+      { message: 'ai_unavailable', failureKind: 'ai_invalid_output' },
     );
     let rateCalls = 0;
     await assert.rejects(

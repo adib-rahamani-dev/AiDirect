@@ -40,18 +40,18 @@ export async function generateCatalogAnalysis(
   if (!ids.length) throw new Error('ai_no_evidence');
   const schema = z
     .object({
-      summary: z.string().min(10).max(500),
+      summary: z.string().min(10).max(240),
       focus: z
         .array(
           z
             .object({
               suggestionId: z.enum(ids as [(typeof ids)[number], ...typeof ids]),
-              reason: z.string().min(5).max(240),
+              reason: z.string().min(5).max(160),
             })
             .strict(),
         )
         .min(1)
-        .max(3),
+        .max(2),
     })
     .strict();
   const provider = createGroq({
@@ -83,14 +83,14 @@ export async function generateCatalogAnalysis(
   try {
     const result = await generateText({
       model: provider('openai/gpt-oss-20b'),
-      maxOutputTokens: 1400,
+      maxOutputTokens: 1800,
       maxRetries: 0,
       abortSignal: AbortSignal.timeout(15000),
       telemetry: { isEnabled: false, recordInputs: false, recordOutputs: false },
       output: Output.object({ schema }),
       providerOptions: { groq: { reasoningEffort: 'low' } },
       system:
-        'You are a careful Persian catalog coach. Input is numeric catalog evidence, not sales performance. Return concise Persian JSON, choose only provided suggestionIds. Explain useful next steps. Do not invent revenue, orders, conversion, growth, demand, Instagram connection or messaging. Do not include any numbers, prices, URLs, HTML or certainty of sales improvement. Give advice, never execute changes. No tools are available.',
+        'به فارسی ساده و کوتاه، فقط دو قدم قابل اقدام برای همین کاتالوگ توضیح بده. ورودی فقط شمارش کاتالوگ است؛ دادهٔ فروش، جستجو، تقاضا، اتصال یا گفتگو نداریم. فقط از suggestionIds موجود انتخاب کن. معنای دقیق کدها: add_products=ثبت محصول واقعی در کاتالوگ خالی؛ stock=اصلاح موجودی محصول فعالِ ناموجود؛ description=تکمیل توضیح کوتاه یا خالی محصول؛ post_mapping=ثبت ارتباط دستی لینک پست یا ریلز اینستاگرام با محصول کاتالوگ، ربطی به دسته‌بندی یا رتبهٔ جستجو ندارد؛ paused=برداشتن توقف پیشنهادهای داخلی پس از بازبینی؛ test_catalog=آزمایش محلی پیشنهاد محصول با بودجه و دستهٔ مشخص، بدون ارسال دایرکت و بدون انتشار کاتالوگ جدید. خلاصه یک جمله و دلیل هر قدم یک جمله باشد. درآمد، نرخ تبدیل، رشد، نتیجهٔ جستجو یا افزایش فروش نساز و تضمین نکن. هیچ رقم، قیمت، URL یا HTML ننویس. ابزار یا مجوز اجرای تغییر نداری. Return only JSON matching the schema.',
       prompt: JSON.stringify(analysisFacts(snapshot)),
     });
     const output = schema.parse(result.output);

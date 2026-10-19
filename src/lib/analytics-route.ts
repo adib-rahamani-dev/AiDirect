@@ -41,6 +41,9 @@ function failure(error: unknown) {
       error: ['ai_not_configured', 'ai_rate_limited', 'ai_unavailable'].includes(code)
         ? code
         : 'unavailable',
+      ...(code === 'ai_unavailable' && typeof error === 'object' && error && 'failureKind' in error
+        ? { failureKind: error.failureKind }
+        : {}),
       ...(code === 'ai_unavailable' &&
       typeof error === 'object' &&
       error &&

@@ -1,4 +1,4 @@
-import { generateText, Output } from 'ai';
+import { generateText, Output, NoObjectGeneratedError } from 'ai';
 import { createGroq } from '@ai-sdk/groq';
 import { z } from 'zod';
 import type { AnalyticsSnapshot } from './analytics';
@@ -94,8 +94,9 @@ export async function generateCatalogAnalysis(
       prompt: JSON.stringify(analysisFacts(snapshot)),
     });
     const output = schema.parse(result.output);
+    if (new Set(output.focus.map((f) => f.suggestionId)).size !== output.focus.length)
+      throw new Error('ai_duplicate_focus');
     if (
-      new Set(output.focus.map((f) => f.suggestionId)).size !== output.focus.length ||
       /[0-9۰-۹٠-٩<>]|https?:|www\./i.test(
         output.summary + ' ' + output.focus.map((f) => f.reason).join(' '),
       )
@@ -119,6 +120,18 @@ export async function generateCatalogAnalysis(
       typeof error.statusCode === 'number'
         ? error.statusCode
         : undefined;
-    throw Object.assign(new Error('ai_unavailable'), { providerStatus: status });
+    const failureKind = NoObjectGeneratedError.isInstance(error)
+      ? error.finishReason === 'length'
+        ? 'incomplete_output'
+        : 'invalid_structure'
+      : error instanceof Error &&
+          ['ai_invalid_output', 'ai_duplicate_focus', 'ai_response_limit'].includes(error.message)
+        ? error.message
+        : error instanceof Error && ['AbortError', 'TimeoutError'].includes(error.name)
+          ? 'timeout'
+          : status
+            ? 'provider_rejection'
+            : 'unknown';
+    throw Object.assign(new Error('ai_unavailable'), { providerStatus: status, failureKind });
   }
 }

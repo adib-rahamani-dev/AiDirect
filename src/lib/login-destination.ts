@@ -5,6 +5,7 @@ export function loginDestination(value: unknown) {
     value === '/admin' ||
     value === '/admin/users' ||
     value === '/admin/catalog' ||
+    value === '/admin/analytics' ||
     value === '/admin/operations'
     ? value
     : '/sendbox';

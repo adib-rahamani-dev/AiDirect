@@ -192,6 +192,7 @@ export default function AdminPanel() {
         <nav aria-label="بخش‌های مدیریت">
           <a href="/admin/users">کاربران و دسترسی‌ها</a>
           <a href="/admin/catalog">محصولات و دستیار فروش</a>
+          <a href="/admin/analytics">آمار و تحلیل کاتالوگ</a>
           <a href="/admin/operations">عملیات و گزارش</a>
           <a href="#overview" aria-current="page">
             <SquaresFourIcon aria-hidden="true" size={22} weight="fill" />

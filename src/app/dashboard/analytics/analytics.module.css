@@ -1,0 +1,240 @@
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 24px 0 36px;
+}
+.metrics article {
+  display: grid;
+  gap: 16px;
+  background: #252f27;
+  border: 1px solid #4c5949;
+  border-radius: 16px;
+  padding: 24px;
+}
+.metrics span,
+.metrics small {
+  font-size: 12px;
+  color: #c1cbbd;
+}
+.metrics strong {
+  font-size: 40px;
+  color: #ffd315;
+}
+.chart {
+  display: flex;
+  align-items: end;
+  gap: 3px;
+  height: 140px;
+  direction: ltr;
+  padding-top: 12px;
+  border-bottom: 1px solid #66705b;
+}
+.chart > div {
+  height: 100%;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: end;
+}
+.chart i {
+  width: 100%;
+  background: #ffd315;
+  border-radius: 4px 4px 0 0;
+  min-height: 3px;
+}
+.chart [data-empty='true'] {
+  background: #53614c;
+}
+.chartEnds {
+  display: flex;
+  justify-content: space-between;
+  direction: ltr;
+  margin: 12px 0 24px;
+  font-size: 11px;
+  color: #b9c6af;
+}
+.coverage {
+  margin: 22px 0;
+}
+.coverage > div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.coverage progress {
+  display: block;
+  width: 100%;
+  height: 9px;
+  accent-color: #ffd315;
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #45513e;
+}
+.coverage progress::-webkit-progress-bar {
+  background: #45513e;
+}
+.coverage progress::-webkit-progress-value {
+  background: #ffd315;
+}
+.categories {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.categories li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #46523e;
+  padding: 16px 0;
+  flex-wrap: wrap;
+}
+.categories span {
+  font-size: 12px;
+  color: #c1cbbd;
+}
+.suggestions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.suggestions article {
+  padding: 24px;
+  border: 1px solid #56654d;
+  border-radius: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+}
+.suggestions article > div {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.suggestions h3 {
+  font-size: 17px;
+  line-height: 1.9;
+}
+.suggestions a {
+  margin: 18px 0 0;
+}
+.index {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  background: #38412b;
+  border-radius: 50%;
+  color: #ffd315;
+}
+.aiHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.badge {
+  font-size: 11px;
+  border: 1px solid #667453;
+  border-radius: 20px;
+  padding: 8px 14px;
+  color: #d5dbba;
+}
+.consent {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0;
+  line-height: 2;
+}
+.consent input {
+  width: 20px;
+  height: 20px;
+  accent-color: #ffd315;
+  flex-shrink: 0;
+}
+.report {
+  border-inline-start: 3px solid #ffd315;
+  padding: 20px;
+  background: #283426;
+  margin-top: 24px;
+}
+.report > span {
+  font-size: 11px;
+  color: #e6d884;
+}
+.unavailable {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.unavailable > div {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+  border: 1px dashed #627055;
+  border-radius: 12px;
+  font-size: 12px;
+}
+.unavailable strong {
+  font-size: 30px;
+}
+.unavailable small {
+  color: #b2bea5;
+}
+.tableScroll {
+  max-height: 270px;
+  overflow: auto;
+  margin-top: 16px;
+}
+.tableScroll table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.tableScroll :is(th, td) {
+  padding: 12px;
+  text-align: start;
+  border-bottom: 1px solid #56654d;
+}
+.tableScroll caption {
+  text-align: start;
+  padding: 12px;
+  color: #c1cbbd;
+}
+@media (max-width: 900px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .suggestions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .unavailable {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .metrics {
+    gap: 10px;
+  }
+  .metrics article {
+    padding: 17px;
+  }
+  .metrics strong {
+    font-size: 32px;
+  }
+  .suggestions {
+    grid-template-columns: 1fr;
+  }
+  .aiHeading {
+    gap: 0;
+  }
+  .badge {
+    margin-bottom: 15px;
+  }
+}

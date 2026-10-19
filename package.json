@@ -23,11 +23,13 @@
     "format:check": "prettier --check src tests scripts docs README.md STATUS.md next.config.ts prisma.config.ts package.json tsconfig.json vercel.json .github"
   },
   "dependencies": {
+    "@ai-sdk/groq": "4.0.65",
     "@fontsource-variable/estedad": "5.3.0",
     "@fontsource/vazirmatn": "5.3.0",
     "@phosphor-icons/react": "2.1.10",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
+    "ai": "7.0.145",
     "better-auth": "1.7.10",
     "dotenv": "17.2.3",
     "next": "16.3.8",

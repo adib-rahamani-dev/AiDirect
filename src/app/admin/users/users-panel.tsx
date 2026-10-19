@@ -130,7 +130,9 @@ export default function UsersPanel() {
           <a href="/admin/users" aria-current="page">
             کاربران و دسترسی‌ها
           </a>
-          <a href="/dashboard">فضای شخصی</a>
+          <a href={data?.role === 'SUPER_ADMIN' ? '/admin/analytics' : '/dashboard'}>
+            {data?.role === 'SUPER_ADMIN' ? 'آمار و تحلیل کاتالوگ' : 'فضای شخصی'}
+          </a>
         </nav>
       </header>
       <main className={base.main}>

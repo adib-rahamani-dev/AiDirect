@@ -137,6 +137,7 @@ export default function CatalogPanel({ customer = false }: { customer?: boolean 
             محصولات
           </a>
           {!customer && <a href="/admin/operations">عملیات و گزارش</a>}
+          <a href={customer ? '/dashboard/analytics' : '/admin/analytics'}>آمار و تحلیل</a>
           {customer && <a href="/dashboard/settings">تنظیمات حساب</a>}
         </nav>
       </header>

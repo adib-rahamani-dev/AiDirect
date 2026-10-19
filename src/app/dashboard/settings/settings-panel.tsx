@@ -61,6 +61,7 @@ export default function SettingsPanel() {
         <nav aria-label="فضای فروشگاه">
           <a href="/dashboard">پنل من</a>
           <a href="/dashboard/catalog">محصولات</a>
+          <a href="/dashboard/analytics">آمار و تحلیل</a>
           <a href="/dashboard/settings" aria-current="page">
             تنظیمات حساب
           </a>

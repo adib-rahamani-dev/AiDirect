@@ -48,6 +48,7 @@ export default function CustomerPanel() {
             پنل من
           </a>
           <a href="/dashboard/catalog">محصولات</a>
+          <a href="/dashboard/analytics">آمار و تحلیل</a>
           <a href="/dashboard/settings">تنظیمات حساب</a>
           {data?.user.role === 'SENIOR_ADMIN' && <a href="/admin/users">مدیریت کاربران</a>}
           <button className={styles.secondary} disabled={busy} onClick={() => void logout()}>
@@ -101,6 +102,15 @@ export default function CustomerPanel() {
             </p>
           </section>
         </div>
+        <section className={styles.panel}>
+          <h2>آمار روشن، قدم بعدی مشخص.</h2>
+          <p>
+            موجودی، اطلاعات ناقص، ارتباط پست‌ها و پیشنهادهای قابل اقدام را از روی کاتالوگ خودت ببین.
+          </p>
+          <a href="/dashboard/analytics" className={styles.link}>
+            دیدن آمار و تحلیل فروشگاه ←
+          </a>
+        </section>
         <section className={styles.panel}>
           <h2>اتصال اینستاگرام</h2>
           <p>

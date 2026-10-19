@@ -313,9 +313,11 @@ export default function AnalyticsPanel({ customer = false }: { customer?: boolea
                   <h2>نگاه دوم با هوش مصنوعی</h2>
                 </div>
                 <span className={styles.badge}>
-                  {data.ai.mode === 'available'
-                    ? 'آمادهٔ درخواست؛ نتیجه هنوز تولید نشده'
-                    : 'API هوش مصنوعی فعال نیست'}
+                  {report
+                    ? 'پاسخ واقعی دریافت شد'
+                    : data.ai.mode === 'available'
+                      ? 'آمادهٔ درخواست؛ نتیجه هنوز تولید نشده'
+                      : 'API هوش مصنوعی فعال نیست'}
                 </span>
               </div>
               <p>

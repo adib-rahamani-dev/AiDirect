@@ -408,3 +408,115 @@ test('DM durable queue uses the matching owner catalog, suppresses duplicates an
     await db.sendboxConnection.deleteMany();
   }
 });
+
+test('DM conversation leases serialize follow-ups, retain only encrypted shopping context and stop after human request', async () => {
+  const pageId = 'dm-context-fixture';
+  await db.sendboxConnection.deleteMany();
+  await db.sendboxDmDelivery.deleteMany({ where: { accountId } });
+  await db.workspace.upsert({
+    where: { id: 'operator-catalog' },
+    create: { id: 'operator-catalog', name: 'fixture' },
+    update: {},
+  });
+  await db.catalogPage.deleteMany({ where: { id: pageId } });
+  await db.catalogPage.create({
+    data: {
+      id: pageId,
+      workspaceId: 'operator-catalog',
+      handle: 'contextfixture',
+      name: 'fixture',
+    },
+  });
+  await db.sendboxConnection.create({
+    data: {
+      accountId,
+      instagramId: '123',
+      username: 'contextfixture',
+      expiresAt: new Date(Date.now() + 86400000),
+    },
+  });
+  await db.catalogProduct.create({
+    data: {
+      id: pageId + '-p',
+      pageId,
+      workspaceId: 'operator-catalog',
+      name: 'موبایل زمینه',
+      description: 'fixture',
+      category: 'موبایل',
+      priceToman: 29000000n,
+      stock: 2,
+      url: 'https://example.com/fixture',
+    },
+  });
+  const incoming = (mid: string, text: string) => ({
+    sender: { id: '456' },
+    recipient: { id: '123' },
+    timestamp: Date.now(),
+    message: { mid, text },
+  });
+  let replies: string[] = [];
+  const transport = async (_account: string, _recipient: string, text: string) => {
+    replies.push(text);
+    return 'accepted' as const;
+  };
+  try {
+    await configureDm(pageId, true, true, {
+      tone: 'formal',
+      shippingPolicy: 'ارسال تستی',
+      aiEnabled: false,
+    });
+    await enqueueDm(accountId, incoming('context-greet', 'سلام'));
+    await enqueueDm(accountId, incoming('context-budget', 'تا ۳۰ میلیون تومان محصول میخوام'));
+    await Promise.all([tickDm(transport), tickDm(transport)]);
+    await tickDm(transport);
+    assert.equal(replies.length, 2);
+    assert.match(replies[0], /خوش آمدید/);
+    assert.match(replies[1], /موبایل زمینه/);
+    const context = await db.sendboxDmContext.findFirstOrThrow({ where: { accountId } });
+    assert.ok(context.stateCipher?.startsWith('v1.'));
+    assert.equal(context.leaseToken, null);
+    const remembered = JSON.parse(
+      decrypt(
+        context.stateCipher!,
+        `dm-context:${accountId}:${context.senderHash}:${context.revision}`,
+      ),
+    );
+    assert.equal(remembered.budget, 30000000);
+    assert.deepEqual(remembered.products, [pageId + '-p']);
+    assert.equal('text' in remembered, false);
+    await enqueueDm(accountId, incoming('context-follow', 'اولی موجوده؟'));
+    await tickDm(transport);
+    assert.equal(replies.length, 3);
+    assert.match(replies[2], /موبایل زمینه/);
+    await enqueueDm(accountId, incoming('context-human', 'اپراتور لطفا'));
+    await tickDm(transport);
+    assert.equal(replies.length, 4);
+    assert.equal(
+      (await db.sendboxDmContext.findFirstOrThrow({ where: { accountId } })).handedOff,
+      true,
+    );
+    await enqueueDm(accountId, incoming('context-stop', 'محصول تا ۳۰ میلیون'));
+    await tickDm(transport);
+    assert.equal(replies.length, 4);
+    assert.equal(
+      await db.sendboxDmDelivery.count({ where: { accountId, errorKind: 'human_handoff' } }),
+      1,
+    );
+    await configureDm(pageId, false, true);
+    await configureDm(pageId, true, true);
+    await db.sendboxDmDelivery.updateMany({
+      where: { accountId },
+      data: { receivedAt: new Date(Date.now() - 65000) },
+    });
+    await enqueueDm(accountId, incoming('context-reset', 'قیمتش چنده؟'));
+    await tickDm(transport);
+    assert.equal(replies.length, 5);
+    assert.match(replies[4], /نام محصول/);
+    await db.catalogPage.delete({ where: { id: pageId } });
+    assert.equal(await db.sendboxDmContext.count({ where: { accountId } }), 0);
+  } finally {
+    await db.sendboxDmDelivery.deleteMany({ where: { accountId } });
+    await db.catalogPage.deleteMany({ where: { id: pageId } });
+    await db.sendboxConnection.deleteMany();
+  }
+});

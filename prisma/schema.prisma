@@ -120,6 +120,7 @@ model SendboxConnection {
   connectedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
   dmSettings  SendboxDmSettings?
+  dmContexts  SendboxDmContext[]
 }
 
 // Short-lived encrypted evidence; receiving an action result is not proof of delivery.
@@ -207,6 +208,7 @@ model CatalogPage {
   products    CatalogProduct[]
   createdAt   DateTime         @default(now())
   dmSettings  SendboxDmSettings[]
+  dmContexts  SendboxDmContext[]
 
   @@unique([id, workspaceId])
   @@unique([workspaceId, handle])
@@ -319,6 +321,9 @@ model SendboxDmSettings {
   page         CatalogPage @relation(fields: [pageId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
   enabled      Boolean @default(false)
   shorthandMillions Boolean @default(false)
+  tone          String @default("friendly")
+  shippingPolicy String @default("")
+  aiEnabled     Boolean @default(false)
   revision     String
   enabledSince DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -341,9 +346,39 @@ model SendboxDmDelivery {
   inboundAt     DateTime
   expiresAt     DateTime
   updatedAt     DateTime @updatedAt
+  intent        String @default("unclassified")
+  resultKind    String?
+  interpretation String @default("none")
+  aiAttempted   Boolean @default(false)
+  aiSucceeded   Boolean @default(false)
+  budgetBucket  String?
+  selectedProductIds Json @default("[]")
+  analyzedAt    DateTime?
+  responseMs    Int?
 
   @@unique([accountId, messageHash])
   @@index([status, nextAttemptAt])
   @@index([expiresAt])
   @@index([accountId, senderHash, receivedAt])
+}
+
+// No raw chat history; only short-lived encrypted shopping context and per-sender lease.
+model SendboxDmContext {
+  accountId    String
+  connection   SendboxConnection @relation(fields: [accountId], references: [accountId], onDelete: Cascade)
+  senderHash   String
+  workspaceId  String
+  pageId       String
+  page         CatalogPage @relation(fields: [pageId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  revision     String
+  stateCipher  String?
+  handedOff    Boolean @default(false)
+  lastInboundAt DateTime?
+  expiresAt    DateTime
+  leaseToken   String?
+  leaseUntil   DateTime?
+  updatedAt    DateTime @updatedAt
+
+  @@id([accountId, senderHash])
+  @@index([expiresAt])
 }

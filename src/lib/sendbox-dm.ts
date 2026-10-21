@@ -3,8 +3,16 @@ import { z } from 'zod';
 import { db } from './db';
 import { decrypt, encrypt } from './crypto';
 import { required } from './config';
-import { latinDigits, parseBudget } from './recommendations';
-import { normalize } from './matching';
+import {
+  dialogueState,
+  dmBudget,
+  planDmReply,
+  type DialogueState,
+  type DialogueSettings,
+  type DialoguePlan,
+} from './dm-dialogue';
+import { extractDmNeed } from './dm-ai';
+export { dmBudget } from './dm-dialogue';
 
 const message = z.object({
   sender: z.object({ id: z.string().regex(/^\d{1,40}$/) }),
@@ -42,20 +50,6 @@ function privateHash(value: string) {
   return createHmac('sha256', required('TOKEN_ENCRYPTION_KEY'))
     .update(`sendbox-dm:${value}`)
     .digest('hex');
-}
-export function dmBudget(text: string, millions: boolean) {
-  const value = latinDigits(normalize(text));
-  const matches = [...value.matchAll(/\d+(?:[.٫]\d+)?/g)];
-  if (
-    millions &&
-    matches.length === 1 &&
-    !/ریال|دلار|یورو|تتر|usd|eur|هزار|میلیون|از\s*\d|بین\s*\d|[-−]\s*\d|تومان\s*تا/.test(value)
-  ) {
-    const match = value.match(/(\d+(?:[.٫]\d+)?)\s*(?:تومن|تومان)/);
-    const amount = match ? Number(match[1].replace('٫', '.')) : 0;
-    if (amount > 0 && amount < 1000) return parseBudget(`${amount} میلیون تومان`);
-  }
-  return parseBudget(text);
 }
 
 export async function enqueueDm(accountId: string, data: unknown) {
@@ -133,43 +127,28 @@ export async function dmReply(
   text: string,
   millions: boolean,
 ) {
-  const budget = dmBudget(text, millions);
-  if (budget.status === 'clarify') return `سلام! ${budget.message}`;
-  const normalized = normalize(text);
-  const known = await db.catalogProduct.findMany({
-    where: { workspaceId, pageId, active: true },
-    distinct: ['category'],
-    select: { category: true },
-    take: 500,
-  });
-  const categories = known
-    .map((p) => p.category)
-    .filter((v) => normalize(v).length > 1 && normalized.includes(normalize(v)));
-  const products = await db.catalogProduct.findMany({
-    where: {
+  return (
+    await planDmReply({
       workspaceId,
       pageId,
-      active: true,
-      stock: { gt: 0 },
-      priceToman: { lte: BigInt(budget.toman) },
-      ...(categories.length ? { category: { in: categories } } : {}),
-    },
-    orderBy: [{ priceToman: 'asc' }, { id: 'asc' }],
-    take: 100,
-  });
-  const selected = products.slice(0, 3);
-  if (!selected.length)
-    return 'سلام! در کاتالوگ این پیج محصول موجودی در این بودجه پیدا نکردم. بودجهٔ دیگری مدنظرت هست؟';
-  let result = `سلام! تا ${budget.toman.toLocaleString('fa-IR')} تومان این گزینه‌ها موجودند:\n`;
-  for (const p of selected) {
-    const block = `\n${p.name.slice(0, 80)} — ${p.priceToman.toLocaleString('fa-IR')} تومان\n${p.description.slice(0, 80)}${p.url.length <= 250 ? '\n' + p.url : ''}\n`;
-    if (result.length + block.length > 900) break;
-    result += block;
-  }
-  return result + '\nقیمت و موجودی از کاتالوگ فروشگاه است؛ برای خرید با فروشنده هماهنگ کن.';
+      text,
+      settings: {
+        tone: 'friendly',
+        shippingPolicy: '',
+        shorthandMillions: millions,
+        aiEnabled: false,
+      },
+      firstTurn: true,
+    })
+  ).reply;
 }
 
-export async function configureDm(pageId: string, enabled: boolean, shorthandMillions: boolean) {
+export async function configureDm(
+  pageId: string,
+  enabled: boolean,
+  shorthandMillions: boolean,
+  preferences?: Partial<Pick<DialogueSettings, 'tone' | 'shippingPolicy' | 'aiEnabled'>>,
+) {
   return db.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(20261020, 1)`;
     const connection = await tx.sendboxConnection.findUnique({ where: { id: 'proof' } });
@@ -185,11 +164,17 @@ export async function configureDm(pageId: string, enabled: boolean, shorthandMil
       (page.workspace.paused && enabled)
     )
       throw new Error('catalog_connection_mismatch');
+    const current = await tx.sendboxDmSettings.findUnique({
+      where: { accountId: connection.accountId },
+    });
     const values = {
       pageId,
       workspaceId: page.workspaceId,
       enabled,
       shorthandMillions,
+      tone: preferences?.tone ?? current?.tone ?? 'friendly',
+      shippingPolicy: preferences?.shippingPolicy ?? current?.shippingPolicy ?? '',
+      aiEnabled: preferences?.aiEnabled ?? current?.aiEnabled ?? false,
       revision: randomUUID(),
       enabledSince: new Date(),
     };
@@ -202,12 +187,16 @@ export async function configureDm(pageId: string, enabled: boolean, shorthandMil
       where: { accountId: connection.accountId, status: 'pending' },
       data: { status: 'suppressed', errorKind: 'settings_changed', payloadCipher: null },
     });
+    await tx.sendboxDmContext.updateMany({
+      where: { accountId: connection.accountId },
+      data: { stateCipher: null, handedOff: false, expiresAt: new Date() },
+    });
     await tx.adminAudit.create({
       data: {
         actorId: 'operator',
         action: enabled ? 'dm_pilot_enabled' : 'dm_pilot_disabled',
         targetId: pageId,
-        detail: 'rules_catalog_only',
+        detail: `hybrid_catalog_dialogue;ai=${values.aiEnabled};tone=${values.tone}`,
       },
     });
   });
@@ -278,22 +267,75 @@ export async function tickDm(transport = sendDm) {
   if ((await db.operationControl.findUnique({ where: { id: 'proof' } }))?.paused) return 0;
   const pending = await db.sendboxDmDelivery.findMany({
     where: { status: 'pending', nextAttemptAt: { lte: now }, expiresAt: { gt: now } },
-    orderBy: { receivedAt: 'asc' },
-    take: 2,
+    orderBy: [{ inboundAt: 'asc' }, { receivedAt: 'asc' }, { id: 'asc' }],
+    take: 10,
   });
   let processed = 0;
   for (const job of pending) {
-    const token = randomUUID();
-    const claimed = await db.sendboxDmDelivery.updateMany({
-      where: { id: job.id, status: 'pending' },
-      data: {
-        status: 'sending',
-        leaseToken: token,
-        leaseUntil: new Date(Date.now() + 45000),
-        attempts: { increment: 1 },
-      },
+    if (processed >= 2) break;
+    const token = randomUUID(),
+      lane = { accountId: job.accountId, senderHash: job.senderHash };
+    const context = await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(20261021, 1)`;
+      const first = await tx.sendboxDmDelivery.findFirst({
+        where: { ...lane, status: { in: ['pending', 'sending'] }, expiresAt: { gt: new Date() } },
+        orderBy: [{ inboundAt: 'asc' }, { receivedAt: 'asc' }, { id: 'asc' }],
+      });
+      if (!first || first.id !== job.id || first.status !== 'pending') return null;
+      const config = await tx.sendboxDmSettings.findUnique({ where: { accountId: job.accountId } });
+      if (!config || config.revision !== job.revision || !config.enabled) {
+        await tx.sendboxDmDelivery.updateMany({
+          where: { id: job.id, status: 'pending' },
+          data: { status: 'suppressed', errorKind: 'settings_changed', payloadCipher: null },
+        });
+        return null;
+      }
+      let prior = await tx.sendboxDmContext.findUnique({ where: { accountId_senderHash: lane } });
+      if (prior?.leaseToken && prior.leaseUntil && prior.leaseUntil > new Date()) return null;
+      if (
+        prior &&
+        (prior.revision !== job.revision ||
+          prior.expiresAt <= new Date() ||
+          prior.workspaceId !== config.workspaceId ||
+          prior.pageId !== config.pageId)
+      ) {
+        prior = await tx.sendboxDmContext.update({
+          where: { accountId_senderHash: lane },
+          data: {
+            stateCipher: null,
+            handedOff: false,
+            lastInboundAt: null,
+            revision: job.revision,
+            workspaceId: config.workspaceId,
+            pageId: config.pageId,
+          },
+        });
+      }
+      const claimed = await tx.sendboxDmDelivery.updateMany({
+        where: { id: job.id, status: 'pending' },
+        data: {
+          status: 'sending',
+          leaseToken: token,
+          leaseUntil: new Date(Date.now() + 90000),
+          attempts: { increment: 1 },
+        },
+      });
+      if (!claimed.count) return null;
+      return tx.sendboxDmContext.upsert({
+        where: { accountId_senderHash: lane },
+        create: {
+          ...lane,
+          workspaceId: config.workspaceId,
+          pageId: config.pageId,
+          revision: job.revision,
+          leaseToken: token,
+          leaseUntil: new Date(Date.now() + 90000),
+          expiresAt: job.expiresAt,
+        },
+        update: { leaseToken: token, leaseUntil: new Date(Date.now() + 90000) },
+      });
     });
-    if (!claimed.count) continue;
+    if (!context) continue;
     const finish = (status: string, errorKind: string | null, retry = false) =>
       db.sendboxDmDelivery.updateMany({
         where: { id: job.id, status: 'sending', leaseToken: token },
@@ -303,6 +345,11 @@ export async function tickDm(transport = sendDm) {
           leaseToken: null,
           leaseUntil: null,
           ...(retry ? { nextAttemptAt: new Date(Date.now() + 120000) } : { payloadCipher: null }),
+          ...(status === 'accepted'
+            ? {
+                responseMs: Math.max(0, Math.min(2147483647, Date.now() - job.inboundAt.getTime())),
+              }
+            : {}),
         },
       });
     let dispatched = false;
@@ -323,16 +370,58 @@ export async function tickDm(transport = sendDm) {
         await finish('suppressed', 'settings_changed');
         continue;
       }
+      if (context.lastInboundAt && context.lastInboundAt > job.inboundAt) {
+        await finish('suppressed', 'out_of_order');
+        continue;
+      }
+      if (context.handedOff) {
+        await finish('suppressed', 'human_handoff');
+        continue;
+      }
       const payload = z
         .object({ sender: z.string().regex(/^\d{1,40}$/), text: z.string().max(1000) })
-        .parse(JSON.parse(decrypt(job.payloadCipher, `sendbox-dm:${job.id}`)));
-      const reply = await dmReply(
-        config.workspaceId,
-        config.pageId,
-        payload.text,
-        config.shorthandMillions,
-      );
-      // Check emergency stop and revision again immediately before crossing provider boundary.
+        .parse(JSON.parse(decrypt(job.payloadCipher, 'sendbox-dm:' + job.id)));
+      const contextKey = 'dm-context:' + job.accountId + ':' + job.senderHash + ':' + job.revision;
+      const state: DialogueState = context.stateCipher
+        ? dialogueState.parse(JSON.parse(decrypt(context.stateCipher, contextKey)))
+        : { products: [] };
+      const plan = await planDmReply({
+        workspaceId: config.workspaceId,
+        pageId: config.pageId,
+        text: payload.text,
+        settings: config,
+        state,
+        firstTurn: !context.lastInboundAt,
+        seed: parseInt(job.messageHash.slice(0, 6), 16),
+        extractor: config.aiEnabled
+          ? async (text, categories) => {
+              const consent = await db.sendboxDmSettings.findUnique({
+                where: { accountId: job.accountId },
+              });
+              if (
+                !consent?.enabled ||
+                !consent.aiEnabled ||
+                consent.revision !== job.revision ||
+                (await db.operationControl.findUnique({ where: { id: 'proof' } }))?.paused
+              )
+                throw Object.assign(new Error('ai_disabled'), { externalAttempted: false });
+              return extractDmNeed(text, categories, job.accountId);
+            }
+          : undefined,
+      });
+      await db.sendboxDmDelivery.updateMany({
+        where: { id: job.id, status: 'sending', leaseToken: token },
+        data: {
+          intent: plan.intent,
+          resultKind: plan.resultKind,
+          interpretation: plan.interpretation,
+          aiAttempted: plan.aiAttempted,
+          aiSucceeded: plan.aiSucceeded,
+          budgetBucket: plan.budgetBucket,
+          selectedProductIds: plan.selectedProductIds,
+          analyzedAt: new Date(),
+        },
+      });
       const latest = await db.sendboxDmSettings.findUnique({ where: { accountId: job.accountId } });
       if (
         !latest?.enabled ||
@@ -345,11 +434,27 @@ export async function tickDm(transport = sendDm) {
         continue;
       }
       dispatched = true;
-      const outcome = await transport(job.accountId, payload.sender, reply);
+      if (plan.handedOff)
+        await db.sendboxDmContext.updateMany({
+          where: { ...lane, leaseToken: token },
+          data: { handedOff: true },
+        });
+      const outcome = await transport(job.accountId, payload.sender, plan.reply);
       if (outcome === 'authentication')
         await db.sendboxDmSettings.updateMany({
           where: { accountId: job.accountId, revision: job.revision },
           data: { enabled: false, revision: randomUUID() },
+        });
+      // Unknown or failed model/send results never become conversation memory.
+      if (outcome === 'accepted')
+        await db.sendboxDmContext.updateMany({
+          where: { ...lane, leaseToken: token, revision: job.revision },
+          data: {
+            stateCipher: encrypt(JSON.stringify(plan.state), contextKey),
+            handedOff: plan.handedOff,
+            lastInboundAt: job.inboundAt,
+            expiresAt: job.expiresAt,
+          },
         });
       const retry = outcome === 'rate_limit' && job.attempts < 2;
       await finish(
@@ -365,11 +470,15 @@ export async function tickDm(transport = sendDm) {
       );
       processed++;
     } catch {
-      // A post-send crash must never trigger an automatic second send.
       await finish(
         dispatched ? 'unknown' : 'failed',
         dispatched ? 'result_unknown' : 'processing_failed',
       );
+    } finally {
+      await db.sendboxDmContext.updateMany({
+        where: { ...lane, leaseToken: token },
+        data: { leaseToken: null, leaseUntil: null },
+      });
     }
   }
   return processed;

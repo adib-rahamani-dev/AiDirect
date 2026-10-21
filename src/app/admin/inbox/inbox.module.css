@@ -79,6 +79,45 @@
 .table {
   overflow-x: auto;
 }
+.main textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font: inherit;
+  color: #ecece4;
+  background: #10120d;
+  border: 1px solid #61674c;
+  border-radius: 10px;
+  padding: 14px;
+  margin: 12px 0;
+}
+.main textarea:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 4px;
+}
+.reply {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+}
+.metrics div {
+  padding: 18px;
+  border: 1px solid #444936;
+  border-radius: 12px;
+}
+.metrics strong,
+.metrics span {
+  display: block;
+}
+.metrics strong {
+  font-size: 23px;
+  color: #ddeb90;
+  margin-bottom: 10px;
+}
 .main table {
   width: 100%;
   border-collapse: collapse;

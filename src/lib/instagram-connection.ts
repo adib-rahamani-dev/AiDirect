@@ -7,7 +7,14 @@ import { baseUrl, provider } from './config';
 import { customerIdentity, ensureCustomerWorkspace, consumeAuthLimit } from './customer-auth';
 import { hasOwnerSession } from './platform-access';
 import { operatorCatalogIdentity } from './catalog';
-import { authorizeUrl, exchangeCode, profile, refreshToken, MetaError } from './meta';
+import {
+  authorizeUrl,
+  exchangeCode,
+  profile,
+  refreshToken,
+  MetaError,
+  subscribeInstagramInbox,
+} from './meta';
 export const CUSTOMER_META_COOKIE = 'aidirect_customer_oauth';
 export class InstagramError extends Error {
   constructor(
@@ -152,14 +159,25 @@ export async function finishInstagramOAuth(request: Request) {
     if (!consumed.count || params.has('error') || !params.get('code')) throw new Error('denied');
     const token = await exchangeCode(params.get('code')!);
     const account = await profile(token.accessToken);
-    await saveInstagramGrant(actor.workspace.id, account, token, guard);
+    const saved = await saveInstagramGrant(actor.workspace.id, account, token, guard);
     result = 'connected';
+    try {
+      await subscribeInstagramInbox(account.accountId, token.accessToken);
+      await db.instagramConnection.updateMany({
+        where: { id: saved.id, status: 'connected', tokenCipher: saved.tokenCipher },
+        data: { subscribed: true, errorKind: null },
+      });
+    } catch {
+      result = 'connected_subscription_pending';
+    }
   } catch (e) {
     if (
       e instanceof InstagramError &&
       ['page_already_connected', 'disconnect_before_replacement'].includes(e.code)
     )
       result = e.code;
+    else if (e instanceof MetaError) result = 'meta_' + e.kind;
+    else if (e instanceof Error && e.message === 'unauthorized') result = 'login_required';
   }
   return NextResponse.redirect(`${baseUrl()}/dashboard/instagram?result=${result}`);
 }

@@ -7,6 +7,7 @@ import { equal, hash, encrypt } from '@/lib/crypto';
 import { baseUrl } from '@/lib/config';
 import { CUSTOMER_META_COOKIE, finishInstagramOAuth } from '@/lib/instagram-connection';
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 export async function GET(request: Request) {
   if ((await cookies()).has(CUSTOMER_META_COOKIE)) return finishInstagramOAuth(request);
   let result = 'oauth_failed';

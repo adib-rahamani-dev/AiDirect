@@ -124,12 +124,18 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
     if (result)
       setNotice(
         result === 'connected'
-          ? 'پیج متصل شد. حالا دریافت رویدادها را فعال کن.'
-          : result === 'page_already_connected'
-            ? 'این پیج قبلاً به فروشگاه دیگری متصل شده است.'
-            : result === 'disconnect_before_replacement'
-              ? 'قبل از تعویض پیج، اتصال قبلی را قطع کن.'
-              : 'اتصال کامل نشد. حساب حرفه‌ای، نقش Tester و دسترسی‌های متا را بررسی کن.',
+          ? 'پیج متصل شد و دریافت پیام و کامنت فعال است. حالا یک پیام تازه از حساب دوم بفرست.'
+          : result === 'connected_subscription_pending'
+            ? 'پیج متصل شد؛ فعال‌سازی رویدادها کامل نشد. دکمهٔ «فعال‌کردن دریافت رویدادها» را بزن.'
+            : result === 'login_required'
+              ? 'نشست سایت تمام شده؛ ابتدا وارد AiDirect شو و اتصال را دوباره شروع کن.'
+              : errorNames[result]
+                ? errorNames[result]
+                : result === 'page_already_connected'
+                  ? 'این پیج قبلاً به فروشگاه دیگری متصل شده است.'
+                  : result === 'disconnect_before_replacement'
+                    ? 'قبل از تعویض پیج، اتصال قبلی را قطع کن.'
+                    : 'اتصال کامل نشد. حساب حرفه‌ای، نقش Tester و دسترسی‌های متا را بررسی کن.',
       );
     url.searchParams.delete('result');
     window.history.replaceState(null, '', url.pathname + url.search);
@@ -361,7 +367,9 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
                 </div>
                 <div className={styles.steps}>
                   <div className={styles.step}>
-                    <span className={styles.stepNumber}>۱</span>
+                    <span className={connected ? styles.stepDone : styles.stepNumber}>
+                      {connected ? '✓' : '۱'}
+                    </span>
                     <div>
                       <strong>حساب حرفه‌ای را متصل کن</strong>
                       <p>
@@ -371,12 +379,14 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
                     </div>
                   </div>
                   <div className={styles.step}>
-                    <span className={styles.stepNumber}>۲</span>
+                    <span className={connection?.subscribed ? styles.stepDone : styles.stepNumber}>
+                      {connection?.subscribed ? '✓' : '۲'}
+                    </span>
                     <div>
-                      <strong>دریافت پیام و کامنت را فعال کن</strong>
+                      <strong>اجازهٔ دسترسی را در Instagram تأیید کن</strong>
                       <p>
-                        بعد از اتصال، این مرحله دریافت رویدادهای تازه را برای همان پیج درخواست
-                        می‌کند.
+                        دریافت پیام و کامنت را پس از ورود، خودمان فعال می‌کنیم. پاسخ‌گوی خودکار تا
+                        انتخاب تو خاموش می‌ماند.
                       </p>
                     </div>
                   </div>
@@ -397,7 +407,9 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
                       {connected ? 'ورود دوباره به Instagram' : 'اتصال با Instagram'} ↗
                     </a>
                   ) : (
-                    <p className={styles.note}>تنظیمات اپ روی سرور آماده نیست.</p>
+                    <p className={styles.note}>
+                      {loading ? 'در حال بررسی اتصال امن…' : 'تنظیمات اپ روی سرور آماده نیست.'}
+                    </p>
                   )}
                   {connected && !connection.subscribed && (
                     <button disabled={busy} onClick={() => void mutate({ action: 'subscribe' })}>
@@ -423,6 +435,27 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
                 {connection && (
                   <p className={styles.note}>اعتبار دسترسی تا {date(connection.expiresAt)}</p>
                 )}
+                <details className={styles.connectionHelp}>
+                  <summary>برای اتصال به مشکل خوردی؟</summary>
+                  <ol>
+                    <li>ورود AiDirect و ورود Instagram جدا هستند؛ ابتدا با ایمیل سایت وارد شو.</li>
+                    <li>
+                      سایت را در Chrome یا Safari باز کن؛ از مرورگر داخل Instagram استفاده نکن.
+                    </li>
+                    <li>
+                      پیج باید Business یا Creator باشد. فعلاً اپ در مرحلهٔ آزمایش است؛ مالک اپ باید
+                      همین پیج را در نقش Instagram Tester اضافه کند و مالک پیج دعوت را بپذیرد.
+                    </li>
+                    <li>
+                      مجوزهای نمایش‌داده‌شده در صفحهٔ رسمی Instagram را تأیید کن. رمز یا کد ورود را
+                      برای پشتیبانی نفرست.
+                    </li>
+                  </ol>
+                  <p>
+                    اگر هنوز خطا داری، متن خطا را بدون اطلاعات ورود برای پشتیبانی بفرست. هیچ اتصال
+                    رسمی تضمین مصونیت از محدودیت‌های متا نیست.
+                  </p>
+                </details>
               </section>
               <section className={styles.card}>
                 <h2>ویترین پیج متصل</h2>

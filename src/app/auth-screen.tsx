@@ -79,7 +79,7 @@ export default function AuthScreen({ mode = 'login' }: { mode?: 'login' | 'signu
         <p>
           {mode === 'signup'
             ? 'حساب AiDirect بساز؛ محصولات و پیج‌های کاتالوگت فقط در فضای خودت قرار می‌گیرند.'
-            : 'با حساب AiDirect وارد شو؛ پنل مناسب سطح دسترسی‌ات باز می‌شود.'}
+            : 'ایمیل و رمز حساب AiDirect را وارد کن. اتصال پیج Instagram، بعد از ورود و در مرحله‌ای جدا انجام می‌شود.'}
         </p>
       </div>
       <form method="post" className="access-form" onSubmit={submit} aria-busy={busy}>

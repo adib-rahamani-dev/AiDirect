@@ -8,6 +8,38 @@
   font-family: 'Estedad Variable', Vazirmatn, sans-serif;
   direction: rtl;
 }
+.connectionHelp {
+  border: 1px solid #37443e;
+  border-radius: 18px;
+  margin-top: 24px;
+  padding: 18px 20px;
+  background: linear-gradient(135deg, #29352b55, #19201e);
+  color: #c9d3cc;
+  font-size: 12px;
+  line-height: 2.2;
+}
+.connectionHelp summary {
+  cursor: pointer;
+  color: #f8d649;
+  font-weight: 650;
+  min-height: 32px;
+}
+.connectionHelp ol {
+  padding-inline-start: 22px;
+}
+.connectionHelp li {
+  margin: 12px 0;
+}
+.stepDone {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #234a37;
+  color: #a7edbf;
+  flex-shrink: 0;
+}
 .shell * {
   box-sizing: border-box;
 }

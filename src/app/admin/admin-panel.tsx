@@ -1,271 +1,121 @@
 'use client';
-
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { SquaresFourIcon } from '@phosphor-icons/react/dist/csr/SquaresFour';
-import { LinkIcon } from '@phosphor-icons/react/dist/csr/Link';
-import { InstagramLogoIcon } from '@phosphor-icons/react/dist/csr/InstagramLogo';
-import { ChatTextIcon } from '@phosphor-icons/react/dist/csr/ChatText';
-import { ArrowSquareOutIcon } from '@phosphor-icons/react/dist/csr/ArrowSquareOut';
-import { SignOutIcon } from '@phosphor-icons/react/dist/csr/SignOut';
-import { TerminalWindowIcon } from '@phosphor-icons/react/dist/csr/TerminalWindow';
-import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy';
-import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus';
-import { ArrowClockwiseIcon } from '@phosphor-icons/react/dist/csr/ArrowClockwise';
-import { UserPlusIcon } from '@phosphor-icons/react/dist/csr/UserPlus';
-import { PaperPlaneTiltIcon } from '@phosphor-icons/react/dist/csr/PaperPlaneTilt';
-import { ClockIcon } from '@phosphor-icons/react/dist/csr/Clock';
-import { InfoIcon } from '@phosphor-icons/react/dist/csr/Info';
+import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Brand } from '../ui';
 import LoginScreen from '../login-screen';
 import styles from './admin.module.css';
 import ServiceOverview from './service-overview';
-
-type Invite = {
-  id: string;
-  createdAt: string;
-  expiresAt: string;
-  claimedAt: string | null;
-  usedAt: string | null;
-  revokedAt: string | null;
-};
-type Overview = {
+type Data = {
   configured: boolean;
-  sendingEnabled: false;
-  connection: { username: string; expiresAt: string; connectedAt: string } | null;
-  events: { eventId: string; eventType: string; receivedAt: string }[];
+  connection: { username: string; expiresAt: string } | null;
   eventCount: number;
-  invites: Invite[];
+  events: { eventId: string; eventType: string; receivedAt: string }[];
+  jobs: {
+    id: string;
+    workspace: string;
+    username: string;
+    status: string;
+    kind: string;
+    errorKind: string | null;
+    createdAt: string;
+  }[];
 };
-const eventLabels: Record<string, string> = {
-  comments: 'کامنت تازه دریافت شد',
-  'action.private_reply': 'نتیجهٔ درخواست پاسخ',
-  'action.list_posts': 'نتیجهٔ درخواست پست‌ها',
-  'action.comment_comments': 'نتیجهٔ درخواست کامنت‌ها',
+const status: Record<string, string> = {
+  pending: 'در صف',
+  sending: 'در حال ارسال',
+  accepted: 'متا پذیرفت',
+  unknown: 'نتیجه نامعلوم',
+  failed: 'ناموفق',
+  skipped: 'متوقف‌شده',
+  expired: 'مهلت گذشته',
 };
-function date(value: string) {
-  return new Intl.DateTimeFormat('fa-IR', {
-    timeZone: 'Asia/Tehran',
+const date = (v: string) =>
+  new Intl.DateTimeFormat('fa-IR', {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(value));
-}
-function inviteStatus(invite: Invite) {
-  return invite.usedAt
-    ? 'اتصال کامل شد'
-    : invite.revokedAt
-      ? 'لغوشده'
-      : Date.parse(invite.expiresAt) <= Date.now()
-        ? 'منقضی'
-        : invite.claimedAt
-          ? 'پذیرفته‌شده'
-          : 'آمادهٔ اشتراک';
-}
-
+  }).format(new Date(v));
 export default function AdminPanel() {
-  const [data, setData] = useState<Overview | null>(null);
-  const [needsLogin, setNeedsLogin] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
-  const [failed, setFailed] = useState(false);
-  const [share, setShare] = useState<{ url: string; expiresAt: string } | null>(null);
-  const pending = useRef(false);
-
-  const load = useCallback(async (signal?: AbortSignal) => {
+  const [data, setData] = useState<Data | null>(null),
+    [loading, setLoading] = useState(true),
+    [notice, setNotice] = useState(''),
+    [needsLogin, setNeedsLogin] = useState(false);
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const response = await fetch('/api/admin', {
+      const r = await fetch('/api/admin', {
         cache: 'no-store',
-        signal: signal ?? AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(20000),
       });
-      if (response.status === 401) {
+      if (r.status === 401) {
         setNeedsLogin(true);
         return;
       }
-      if (!response.ok) throw new Error();
-      setData(await response.json());
-      setFailed(false);
+      if (!r.ok) throw Error();
+      setData(await r.json());
     } catch {
-      if (!signal?.aborted) setFailed(true);
+      setNotice('دریافت وضعیت کامل نشد؛ دوباره امتحان کن.');
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      setLoading(false);
     }
   }, []);
   useEffect(() => {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => {
-      controller.abort();
-      setFailed(true);
-      setLoading(false);
-    }, 15000);
-    void load(controller.signal).finally(() => window.clearTimeout(timeout));
-    const result = new URLSearchParams(window.location.search).get('result');
-    if (result) {
-      setMessage(
-        result === 'connected'
-          ? 'بازگشت از اتصال انجام شد؛ وضعیت تأییدشده را در پنل می‌بینی.'
-          : 'اتصال کامل نشد. می‌توانی دوباره شروع کنی.',
-      );
-      window.history.replaceState(null, '', '/admin');
-    }
-    return () => {
-      controller.abort();
-      window.clearTimeout(timeout);
-    };
+    void load();
   }, [load]);
-
-  async function action(kind: 'create' | 'revoke' | 'inspect' | 'logout', id?: string) {
-    if (pending.current) return;
-    pending.current = true;
-    setBusy(true);
-    setMessage('');
-    try {
-      const response = await fetch(
-        kind === 'logout'
-          ? '/api/proof'
-          : kind === 'inspect'
-            ? '/api/sendbox'
-            : '/api/sendbox/invite',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: kind, ...(id ? { id } : {}) }),
-          signal: AbortSignal.timeout(20000),
-        },
-      );
-      if (response.status === 401) {
-        setNeedsLogin(true);
-        return;
-      }
-      if (kind === 'logout' && response.ok) {
-        setNeedsLogin(true);
-        return;
-      }
-      const result = await response.json();
-      if (!response.ok) {
-        setMessage(
-          result.error === 'disconnect_first'
-            ? 'اول اتصال فعلی را از بخش مدیریت حساب قطع کن؛ سپس دعوت بساز.'
-            : 'عملیات کامل نشد. سرویس یا اتصال را بررسی کن و دوباره تلاش کن.',
-        );
-        return;
-      }
-      if (kind === 'create') {
-        setShare({ url: result.url, expiresAt: result.expiresAt });
-        setMessage('دعوت ساخته شد. لینک را فقط برای صاحب پیج بفرست.');
-      }
-      if (kind === 'revoke') {
-        setShare(null);
-        setMessage('دعوت لغو شد؛ لینک قبلی دیگر قابل استفاده نیست.');
-      }
-      if (kind === 'inspect')
-        setMessage(
-          result.configured
-            ? `تنظیمات سرویس درست است؛ ${new Intl.NumberFormat('fa-IR').format(result.accounts.length)} حساب در سرویس دیده شد.`
-            : 'تنظیمات سرویس نیاز به بررسی دارد.',
-        );
-      await load();
-    } catch {
-      setMessage('نتیجهٔ عملیات دریافت نشد. قبل از تلاش دوباره، پنل را تازه‌سازی کن.');
-    } finally {
-      pending.current = false;
-      setBusy(false);
-    }
-  }
-  async function copy() {
-    if (!share) return;
-    try {
-      await navigator.clipboard.writeText(share.url);
-      setMessage('لینک دعوت کپی شد.');
-    } catch {
-      setMessage('کپی خودکار در دسترس نیست؛ لینک را از کادر انتخاب و کپی کن.');
-    }
+  async function logout() {
+    const r = await fetch('/api/proof', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{"action":"logout"}',
+    });
+    if (r.ok) setNeedsLogin(true);
+    else setNotice('خروج کامل نشد.');
   }
   if (needsLogin) return <LoginScreen destination="/admin" />;
-  const connected = Boolean(data?.connection && Date.parse(data.connection.expiresAt) > Date.now());
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
         <Brand />
         <nav aria-label="بخش‌های مدیریت">
+          <a href="/admin" aria-current="page">
+            ◈ نمای کلی سرویس
+          </a>
           <a href="/admin/users">کاربران و دسترسی‌ها</a>
-          <a href="/admin/catalog">محصولات و دستیار فروش</a>
-          <a href="/admin/analytics">آمار و تحلیل کاتالوگ</a>
-          <a href="/admin/inbox">پاسخ دایرکت آزمایشی</a>
-          <a href="/admin/operations">عملیات و گزارش</a>
-          <a href="#overview" aria-current="page">
-            <SquaresFourIcon aria-hidden="true" size={22} weight="fill" />
-            نمای کلی
-          </a>
-          <a href="#invites">
-            <LinkIcon aria-hidden="true" size={22} />
-            دعوت اتصال
-          </a>
-          <a href="#events">
-            <ChatTextIcon aria-hidden="true" size={22} />
-            رویدادها
-          </a>
-          <a href="/proof">
-            <TerminalWindowIcon aria-hidden="true" size={22} />
-            پنل فنی
-          </a>
+          <a href="/dashboard/instagram">اتصال مستقیم Instagram</a>
+          <a href="/dashboard/instagram?tab=inbox">صندوق پیام پیج من</a>
+          <a href="/dashboard/instagram?tab=automations">اتوماسیون پیج من</a>
+          <a href="/admin/catalog">کاتالوگ مدیر</a>
+          <a href="/admin/analytics">تحلیل محصولات</a>
+          <a href="/admin/operations">عملیات و توقف اضطراری</a>
+          <a href="/proof">آزمایش فنی قدیمی</a>
         </nav>
-        <button
-          className={styles.logout}
-          onClick={() => {
-            void action('logout');
-          }}
-          disabled={busy}
-        >
-          <SignOutIcon aria-hidden="true" size={22} />
-          خروج
+        <button className={styles.logout} onClick={() => void logout()}>
+          خروج ↗
         </button>
       </aside>
-      <main className={styles.main} id="overview">
+      <main className={styles.main}>
         <header className={styles.header}>
           <div>
             <h1>اتاق کنترل</h1>
-            <p>اتصال‌ها و دعوت‌ها، یک‌جا.</p>
+            <p>مشتری‌ها، اتصال‌ها و نتیجهٔ واقعی ارسال.</p>
           </div>
           <div className={styles.headerActions}>
-            <button
-              className={styles.outline}
-              onClick={() => {
-                void action('inspect');
-              }}
-              disabled={busy || loading}
-            >
-              بررسی سرویس
+            <button className={styles.outline} disabled={loading} onClick={() => void load()}>
+              {loading ? 'بررسی…' : 'تازه‌سازی'}
             </button>
-            <a className={styles.outline} href="/">
-              نمای سایت
-              <ArrowSquareOutIcon aria-hidden="true" size={18} />
+            <a href="/signup" className={styles.outline}>
+              صفحهٔ ثبت‌نام عمومی ↗
             </a>
           </div>
         </header>
-        {message && (
+        {notice && (
           <p className={styles.notice} role="status">
-            {message}
+            {notice}
           </p>
         )}
-        {failed && (
-          <div className={styles.notice} role="alert">
-            وضعیت پنل دریافت نشد.{' '}
-            <button
-              className={styles.textButton}
-              onClick={() => {
-                setLoading(true);
-                void load();
-              }}
-            >
-              تلاش دوباره
-            </button>
-          </div>
-        )}
         <ServiceOverview />
-        <section className={styles.welcome} aria-labelledby="connection-title">
+        <section className={styles.welcome}>
           <Image
             className={styles.bannerArt}
             src="/images/admin-banner-v2.webp"
@@ -274,219 +124,122 @@ export default function AdminPanel() {
             alt=""
           />
           <div className={styles.welcomeContent}>
-            <h2 id="connection-title">
-              {connected ? 'پیجت وصل است. مسیر را بررسی کنیم.' : 'اول، یک پیج واقعی وصل کنیم.'}
-            </h2>
+            <h2>متصل به مسیر رسمی متا.</h2>
             <p>
-              {data?.connection ? (
-                <>
-                  <bdi>@{data.connection.username}</bdi> ·{' '}
-                  {connected
-                    ? `اعتبار اتصال تا ${date(data.connection.expiresAt)}`
-                    : 'اعتبار اتصال تمام شده؛ دوباره وارد اینستاگرام شو.'}
-                </>
-              ) : (
-                'حساب حرفه‌ای خودت را وصل کن یا برای صاحب پیج دعوت بفرست.'
-              )}
+              {data?.configured
+                ? 'اپ AiDirect روی سرور تنظیم شده است. هر فروشگاه از حساب خودش پیج را متصل می‌کند.'
+                : 'تنظیم اپ متا روی سرور هنوز کامل نیست.'}
             </p>
             <div className={styles.welcomeActions}>
-              <a
-                className={styles.darkButton}
-                href={data?.configured ? '/api/sendbox/connect' : '/connect/instagram'}
-              >
-                <InstagramLogoIcon aria-hidden="true" size={22} />
-                {connected ? 'ورود دوباره از سرویس آزمایشی' : 'اتصال از سرویس آزمایشی'}
+              <a className={styles.darkButton} href="/dashboard/instagram">
+                اتصال پیج خودم ↗
               </a>
-              <a className={styles.darkOutline} href="/connect">
-                <InstagramLogoIcon aria-hidden="true" size={21} />
-                اتصال مستقیم متا
+              <a className={styles.darkOutline} href="/admin/users">
+                مدیریت مشتری‌ها
               </a>
-              <button
-                className={styles.darkOutline}
-                onClick={() => {
-                  void action('create');
-                }}
-                disabled={busy || !data?.configured || Boolean(data?.connection)}
-              >
-                <LinkIcon aria-hidden="true" size={21} />
-                ساخت لینک دعوت
-              </button>
-              {data?.connection && (
-                <a className={styles.manageLink} href="/sendbox">
-                  مدیریت اتصال
-                </a>
-              )}
+              <a className={styles.darkOutline} href="/dashboard/instagram?tab=automations">
+                ساخت اتوماسیون
+              </a>
             </div>
-          </div>
-        </section>
-        <section className={styles.summary} aria-label="وضعیت واقعی آزمایش">
-          <div>
-            <InstagramLogoIcon aria-hidden="true" size={29} />
-            <p>
-              <strong>
-                {loading
-                  ? '…'
-                  : !data
-                    ? '—'
-                    : new Intl.NumberFormat('fa-IR').format(connected ? 1 : 0)}
-              </strong>
-              <span>پیج متصل</span>
-            </p>
-          </div>
-          <div>
-            <ChatTextIcon aria-hidden="true" size={29} />
-            <p>
-              <strong>
-                {loading
-                  ? '…'
-                  : !data
-                    ? '—'
-                    : new Intl.NumberFormat('fa-IR').format(data.eventCount)}
-              </strong>
-              <span>رویداد دریافت‌شده</span>
-            </p>
-          </div>
-          <div>
-            <PaperPlaneTiltIcon aria-hidden="true" size={29} />
-            <p>
-              <strong className={styles.noSending}>پاسخ کامنت غیرفعال</strong>
-              <span>
-                <a href="/admin/inbox">وضعیت پاسخ دایرکت ←</a>
-              </span>
-            </p>
           </div>
         </section>
         <div className={styles.panels}>
-          <section className={styles.panel} id="invites" aria-labelledby="invites-title">
+          <section className={styles.panel}>
             <div className={styles.panelHeader}>
-              <h2 id="invites-title">
-                <LinkIcon aria-hidden="true" size={23} />
-                دعوت‌های اتصال
-              </h2>
-              <button
-                className={styles.yellowButton}
-                onClick={() => {
-                  void action('create');
-                }}
-                disabled={busy || !data?.configured || Boolean(data?.connection)}
-              >
-                <PlusIcon aria-hidden="true" size={18} />
-                دعوت تازه
-              </button>
+              <h2>ثبت‌نام، بدون ارسال رمز مدیر.</h2>
             </div>
-            {share && (
-              <div className={styles.shareBox}>
-                <label htmlFor="invite-link">لینک خصوصی؛ معتبر تا {date(share.expiresAt)}</label>
-                <div>
-                  <input
-                    id="invite-link"
-                    value={share.url}
-                    readOnly
-                    dir="ltr"
-                    onFocus={(event) => event.target.select()}
-                  />
-                  <button
-                    className={styles.yellowButton}
-                    type="button"
-                    onClick={() => {
-                      void copy();
-                    }}
-                    aria-label="کپی لینک دعوت"
-                  >
-                    <CopyIcon aria-hidden="true" size={20} />
-                  </button>
-                </div>
-              </div>
-            )}
-            {loading || !data ? (
-              <p role="status">
-                {loading ? 'در حال دریافت دعوت‌ها…' : 'وضعیت دعوت‌ها هنوز مشخص نیست.'}
-              </p>
-            ) : data?.invites.length ? (
-              <ul className={styles.inviteList}>
-                {data.invites.map((invite) => (
-                  <li key={invite.id}>
-                    <div>
-                      <strong>{inviteStatus(invite)}</strong>
-                      <span>
-                        ساخته‌شده {date(invite.createdAt)} · انقضا {date(invite.expiresAt)}
-                      </span>
-                    </div>
-                    {!invite.usedAt &&
-                      !invite.revokedAt &&
-                      Date.parse(invite.expiresAt) > Date.now() && (
-                        <button
-                          className={styles.textButton}
-                          disabled={busy}
-                          onClick={() => {
-                            void action('revoke', invite.id);
-                          }}
-                        >
-                          لغو دعوت
-                        </button>
-                      )}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className={styles.empty}>
-                <UserPlusIcon aria-hidden="true" size={38} />
-                <h3>دعوتی نساخته‌ای.</h3>
-                <p>دو ساعت اعتبار؛ بدون دسترسی به پنل مدیریت.</p>
-              </div>
-            )}
-            <p className={styles.panelFoot}>
-              <InfoIcon aria-hidden="true" size={18} />
-              دعوت تازه، دعوت فعال قبلی را لغو می‌کند. رمز مدیر را برای صاحب پیج نفرست.
+            <p>
+              مشتری از صفحهٔ عمومی حساب AiDirect می‌سازد؛ کاتالوگ، اتصال، گفتگو و گزارش به workspace
+              همان مشتری محدودند.
             </p>
+            <p>
+              ثبت‌نام عمومی سایت، محدودیت App Review متا را برنمی‌دارد. حساب Instagram باید حرفه‌ای
+              و تا قبل از دسترسی عمومی، مجاز به تست اپ باشد.
+            </p>
+            <a className={styles.yellowButton} href="/signup">
+              نمایش صفحهٔ ثبت‌نام ↗
+            </a>
           </section>
-          <section className={styles.panel} id="events" aria-labelledby="events-title">
+          <section className={styles.panel}>
             <div className={styles.panelHeader}>
-              <h2 id="events-title">
-                <ClockIcon aria-hidden="true" size={23} />
-                آخرین رویدادها
-              </h2>
+              <h2>آخرین رویدادهای متا</h2>
+              <span>{data?.eventCount.toLocaleString('fa-IR') ?? '—'}</span>
             </div>
-            {loading || !data ? (
-              <p role="status">
-                {loading ? 'در حال دریافت رویدادها…' : 'وضعیت رویدادها هنوز مشخص نیست.'}
-              </p>
-            ) : data?.events.length ? (
-              <ul className={styles.eventList}>
-                {data.events.map((event) => (
-                  <li key={event.eventId}>
-                    <ChatTextIcon aria-hidden="true" size={20} />
-                    <div>
-                      <strong>{eventLabels[event.eventType] ?? 'رویداد سرویس دریافت شد'}</strong>
-                      <time dateTime={event.receivedAt}>{date(event.receivedAt)}</time>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+            {data?.events.length ? (
+              data.events.map((event) => (
+                <div className={styles.notice} key={event.eventId}>
+                  <strong>
+                    {event.eventType === 'instagram_processed'
+                      ? 'پردازش شد'
+                      : event.eventType === 'instagram_pending'
+                        ? 'در صف دریافت'
+                        : 'نیازمند بررسی'}
+                  </strong>
+                  <p>{date(event.receivedAt)}</p>
+                </div>
+              ))
             ) : (
-              <div className={styles.empty}>
-                <ChatTextIcon aria-hidden="true" size={38} />
-                <h3>هنوز رویدادی دریافت نشده.</h3>
-                <p>پس از اتصال پیج، رویدادهای تازه اینجا دیده می‌شوند.</p>
-              </div>
+              <p>هنوز رویدادی برای اتصال‌های مستقیم مشتری‌ها ثبت نشده است.</p>
             )}
-            <button
-              className={styles.outline}
-              onClick={() => {
-                setLoading(true);
-                void load();
-              }}
-              disabled={busy || loading}
-            >
-              <ArrowClockwiseIcon aria-hidden="true" size={19} />
-              تازه‌سازی
-            </button>
           </section>
         </div>
+        <section className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <h2>آخرین ارسال‌های فروشگاه‌ها</h2>
+          </div>
+          {data?.jobs.length ? (
+            <div style={{ overflowX: 'auto' }}>
+              <table
+                style={{
+                  width: '100%',
+                  minWidth: 560,
+                  textAlign: 'right',
+                  borderCollapse: 'collapse',
+                  fontSize: 12,
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th>فروشگاه</th>
+                    <th>مسیر</th>
+                    <th>وضعیت</th>
+                    <th>زمان</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.jobs.map((job) => (
+                    <tr key={job.id}>
+                      <td style={{ padding: '18px 8px' }}>
+                        {job.workspace}
+                        <br />
+                        <bdi>@{job.username}</bdi>
+                      </td>
+                      <td>
+                        {job.kind === 'private_reply'
+                          ? 'پاسخ خصوصی کامنت'
+                          : job.kind === 'dm_auto'
+                            ? 'پاسخ‌گوی محصول'
+                            : 'پاسخ دستی'}
+                      </td>
+                      <td>
+                        {status[job.status] ?? job.status}
+                        {job.errorKind && (
+                          <small style={{ display: 'block' }}>{job.errorKind}</small>
+                        )}
+                      </td>
+                      <td>{date(job.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p>هنوز تلاشی ثبت نشده است. هیچ ارسال یا فروش نمونه‌ای به آمار اضافه نمی‌شود.</p>
+          )}
+        </section>
         <footer className={styles.footer}>
-          <InfoIcon aria-hidden="true" size={17} />
-          دریافت رویداد، ارسال پیام را ثابت نمی‌کند. پاسخ خصوصی کامنت هنوز فعال نیست؛ پاسخ دایرکت از
-          بخش «پاسخ دایرکت آزمایشی» مدیریت می‌شود.
+          پذیرش API به معنی تحویل قطعی نیست. متن خصوصی دایرکت مشتری‌ها در این نمای مدیریتی نمایش
+          داده نمی‌شود. BoxAPI در مسیر فعلی استفاده نمی‌شود.
         </footer>
       </main>
     </div>

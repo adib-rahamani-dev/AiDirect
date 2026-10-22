@@ -4,6 +4,7 @@ import { provider } from '@/lib/config';
 import { refreshIfNeeded, tick } from '@/lib/worker';
 import { expireSendboxEvidence } from '@/lib/sendbox-store';
 import { tickDm } from '@/lib/sendbox-dm';
+import { drainInstagramWebhook } from '@/lib/instagram-webhook';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 export async function POST(request: Request) {
@@ -21,11 +22,12 @@ export async function POST(request: Request) {
     };
     await heartbeat();
     await expireSendboxEvidence();
-    const dmProcessed = await tickDm();
+    const dmProcessed = process.env.SENDBOX_TEST_ENABLED === 'true' ? await tickDm() : 0;
+    const instagramProcessed = await drainInstagramWebhook();
     await refreshIfNeeded();
     const processed = await tick();
     await heartbeat();
-    return Response.json({ ok: true, processed, dmProcessed });
+    return Response.json({ ok: true, processed, dmProcessed, instagramProcessed });
   } catch {
     return Response.json({ error: 'worker_unavailable' }, { status: 503 });
   }

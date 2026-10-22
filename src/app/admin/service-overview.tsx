@@ -8,6 +8,10 @@ export default function ServiceOverview() {
     products: number;
     pages: number;
     signupEnabled: boolean;
+    connections: number;
+    accepted: number;
+    unknown: number;
+    queued: number;
   } | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -37,9 +41,9 @@ export default function ServiceOverview() {
         <div className={styles.stats}>
           {[
             ['حساب کاربری', data?.users],
-            ['پیج کاتالوگ', data?.pages],
-            ['محصول', data?.products],
-            ['حساب متوقف', data?.suspended],
+            ['پیج متصل به متا', data?.connections],
+            ['ارسال پذیرفته‌شده', data?.accepted],
+            ['نتیجه نامعلوم', data?.unknown],
           ].map(([label, value]) => (
             <div key={String(label)}>
               <span>{label}</span>
@@ -50,7 +54,8 @@ export default function ServiceOverview() {
       )}
       <p>
         ثبت‌نام عمومی: {data ? (data.signupEnabled ? 'فعال' : 'متوقف') : 'در حال بررسی…'} · پیج
-        کاتالوگ به معنی اتصال رسمی اینستاگرام نیست.
+        کاتالوگ به معنی اتصال رسمی اینستاگرام نیست. در صف:{' '}
+        {data?.queued.toLocaleString('fa-IR') ?? '—'}
       </p>
     </section>
   );

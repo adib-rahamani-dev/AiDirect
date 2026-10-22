@@ -208,6 +208,7 @@ export async function sendDm(
   recipient: string,
   text: string,
 ): Promise<DmSendResult> {
+  if (process.env.SENDBOX_TEST_ENABLED !== 'true') return 'rejected';
   try {
     const response = await fetch('https://api.sendbox.chat/api/v1/service/actions/send_message', {
       method: 'POST',
@@ -249,6 +250,7 @@ export async function sendDm(
 }
 
 export async function tickDm(transport = sendDm) {
+  if (process.env.SENDBOX_TEST_ENABLED !== 'true') return 0;
   const now = new Date();
   await db.sendboxDmDelivery.updateMany({
     where: { status: 'sending', leaseUntil: { lt: now } },

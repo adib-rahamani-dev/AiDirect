@@ -1,10 +1,5 @@
-import AccountEntry from '../../account-entry';
-import InboxPanel from './inbox-panel';
+import { redirect } from 'next/navigation';
 export const metadata = { title: 'آزمایش پاسخ دایرکت', robots: { index: false, follow: false } };
 export default function Page() {
-  return (
-    <AccountEntry destination="/admin/inbox">
-      <InboxPanel />
-    </AccountEntry>
-  );
+  redirect('/dashboard/instagram?tab=inbox');
 }

@@ -7,6 +7,8 @@ import { after } from 'next/server';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 export async function POST(request: Request) {
+  if (process.env.SENDBOX_TEST_ENABLED !== 'true')
+    return new Response('Provider disabled', { status: 410 });
   const secret = process.env.SENDBOX_WEBHOOK_SECRET;
   if (!secret) return new Response('Not configured', { status: 503 });
   const reader = request.body?.getReader();

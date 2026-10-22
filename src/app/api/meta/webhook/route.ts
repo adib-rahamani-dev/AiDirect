@@ -2,7 +2,10 @@ import { required } from '@/lib/config';
 import { equal, validSignature } from '@/lib/crypto';
 import { parseComments } from '@/lib/webhook';
 import { ingest } from '@/lib/pipeline';
+import { after } from 'next/server';
+import { storeInstagramWebhook, drainInstagramWebhook } from '@/lib/instagram-webhook';
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 export async function GET(request: Request) {
   const p = new URL(request.url).searchParams;
   if (
@@ -34,13 +37,24 @@ export async function POST(request: Request) {
   if (!validSignature(raw, request.headers.get('x-hub-signature-256'), secret))
     return new Response('Forbidden', { status: 403 });
   let comments;
+  let payload: unknown;
   try {
-    comments = parseComments(JSON.parse(raw.toString('utf8')));
+    payload = JSON.parse(raw.toString('utf8'));
+    comments = parseComments(payload);
   } catch {
     return new Response('Invalid payload', { status: 400 });
   }
   try {
     await ingest(comments, 'webhook');
+    const stored = await storeInstagramWebhook(payload);
+    if (stored)
+      after(async () => {
+        try {
+          await drainInstagramWebhook();
+        } catch {
+          /* durable queue; next worker run recovers */
+        }
+      });
   } catch {
     return new Response('Storage unavailable', { status: 503 });
   }

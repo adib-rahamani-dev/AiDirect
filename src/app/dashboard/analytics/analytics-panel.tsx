@@ -1,4 +1,5 @@
 'use client';
+import DashboardShell from '../dashboard-shell';
 import { useEffect, useRef, useState } from 'react';
 import { Brand } from '../../ui';
 import type { AnalyticsSnapshot } from '@/lib/analytics';
@@ -84,20 +85,24 @@ export default function AnalyticsPanel({ customer = false }: { customer?: boolea
   }
   const m = data?.metrics,
     max = Math.max(1, ...(data?.timeline.map((p) => p.count) ?? []));
-  return (
-    <div className={base.shell}>
-      <header className={base.header}>
-        <Brand />
-        <nav aria-label={customer ? 'فضای فروشگاه' : 'مدیریت سرویس'}>
-          <a href={customer ? '/dashboard' : '/admin'}>{customer ? 'پنل من' : 'نمای کلی سرویس'}</a>
-          <a href={catalog}>محصولات</a>
-          <a href={customer ? '/dashboard/analytics' : '/admin/analytics'} aria-current="page">
-            آمار و تحلیل
-          </a>
-          {customer && <a href="/dashboard/settings">تنظیمات حساب</a>}
-        </nav>
-      </header>
-      <main className={base.main} aria-busy={loading}>
+  const content = (
+    <div className={customer ? base.embedded : base.shell}>
+      {!customer && (
+        <header className={base.header}>
+          <Brand />
+          <nav aria-label={customer ? 'فضای فروشگاه' : 'مدیریت سرویس'}>
+            <a href={customer ? '/dashboard' : '/admin'}>
+              {customer ? 'پنل من' : 'نمای کلی سرویس'}
+            </a>
+            <a href={catalog}>محصولات</a>
+            <a href={customer ? '/dashboard/analytics' : '/admin/analytics'} aria-current="page">
+              آمار و تحلیل
+            </a>
+            {customer && <a href="/dashboard/settings">تنظیمات حساب</a>}
+          </nav>
+        </header>
+      )}
+      <main className={customer ? base.embeddedMain : base.main} aria-busy={loading}>
         <div className={base.intro}>
           <div>
             <span className={base.eyebrow}>آمار روشن، تصمیم آگاهانه</span>
@@ -373,22 +378,39 @@ export default function AnalyticsPanel({ customer = false }: { customer?: boolea
             <section className={base.panel}>
               <h2>آمار گفتگو و فروش</h2>
               <div className={styles.unavailable}>
-                {['کامنت واقعی', 'پاسخ خصوصی', 'سفارش', 'درآمد', 'نرخ تبدیل'].map((label) => (
-                  <div key={label}>
-                    <span>{label}</span>
-                    <strong>—</strong>
-                    <small>داده متصل نیست</small>
-                  </div>
-                ))}
+                {(['کامنت واقعی', 'پاسخ خصوصی', 'سفارش', 'درآمد', 'نرخ تبدیل'] as const).map(
+                  (label) => (
+                    <div key={label}>
+                      <span>{label}</span>
+                      <strong>
+                        {label === 'پاسخ خصوصی' && data.messaging.privateReplies !== null
+                          ? n(data.messaging.privateReplies)
+                          : '—'}
+                      </strong>
+                      <small>
+                        {label === 'پاسخ خصوصی' && data.messaging.privateReplies !== null
+                          ? 'پذیرش متا؛ نه تأیید تحویل'
+                          : 'دادهٔ کافی متصل نیست'}
+                      </small>
+                    </div>
+                  ),
+                )}
               </div>
               <p>
-                پس از اتصال مستقل Instagram و منبع معتبر سفارش، این بخش دادهٔ واقعی می‌گیرد. مقدار
-                ناموجود را صفر یا فروش ازدست‌رفته حساب نمی‌کنیم.
+                نتیجهٔ ارسال‌های متصل از دیتابیس خوانده می‌شود. برای آمار پیام‌ها به صندوق پیام برو؛
+                سفارش، درآمد و نرخ تبدیل بدون منبع معتبر سفارش محاسبه نمی‌شوند.
               </p>
             </section>
           </>
         )}
       </main>
     </div>
+  );
+  return customer ? (
+    <DashboardShell active="آمار و تحلیل" title="آمار و تحلیل فروشگاه">
+      {content}
+    </DashboardShell>
+  ) : (
+    content
   );
 }

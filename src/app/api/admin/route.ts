@@ -8,38 +8,54 @@ export async function GET() {
   try {
     await requireOperator();
     await expireSendboxEvidence();
-    const [connection, events, eventCount, invites] = await Promise.all([
-      db.sendboxConnection.findUnique({
-        where: { id: 'proof' },
-        select: { username: true, expiresAt: true, connectedAt: true },
+    const [connection, events, eventCount, jobs] = await Promise.all([
+      db.instagramConnection.findUnique({
+        where: { workspaceId: 'operator-catalog' },
+        select: { username: true, expiresAt: true, issuedAt: true, status: true },
       }),
-      db.sendboxWebhookEvent.findMany({
+      db.instagramWebhookEnvelope.findMany({
         orderBy: { receivedAt: 'desc' },
         take: 20,
-        select: { eventId: true, eventType: true, receivedAt: true },
+        select: { id: true, status: true, receivedAt: true },
       }),
-      db.sendboxWebhookEvent.count(),
-      db.sendboxInvite.findMany({
+      db.instagramWebhookEnvelope.count(),
+      db.instagramJob.findMany({
         orderBy: { createdAt: 'desc' },
         take: 20,
         select: {
           id: true,
+          status: true,
+          kind: true,
+          errorKind: true,
           createdAt: true,
-          expiresAt: true,
-          claimedAt: true,
-          usedAt: true,
-          revokedAt: true,
+          connection: { select: { username: true, workspace: { select: { name: true } } } },
         },
       }),
     ]);
     return Response.json(
       {
-        connection,
-        events,
+        connection:
+          connection?.status === 'connected'
+            ? {
+                username: connection.username,
+                expiresAt: connection.expiresAt,
+                connectedAt: connection.issuedAt,
+              }
+            : null,
+        events: events.map((e) => ({
+          eventId: e.id,
+          eventType: 'instagram_' + e.status,
+          receivedAt: e.receivedAt,
+        })),
         eventCount,
-        invites,
+        invites: [],
+        jobs: jobs.map(({ connection, ...job }) => ({
+          ...job,
+          workspace: connection.workspace.name,
+          username: connection.username,
+        })),
         sendingEnabled: false,
-        configured: Boolean(process.env.SENDBOX_API_KEY && process.env.SENDBOX_WEBHOOK_SECRET),
+        configured: Boolean(process.env.INSTAGRAM_APP_ID && process.env.INSTAGRAM_APP_SECRET),
       },
       { headers: { 'Cache-Control': 'no-store' } },
     );

@@ -338,3 +338,51 @@ form.inline {
     margin: 0;
   }
 }
+.embedded {
+  color: #f6f2e7;
+  font-family: 'Estedad Variable', Vazirmatn, sans-serif;
+}
+.embeddedMain {
+  padding: 0;
+}
+.embedded .intro {
+  grid-template-columns: 1.5fr 1fr;
+  gap: 25px;
+}
+.embedded .intro h1 {
+  font-size: clamp(28px, 4vw, 47px);
+}
+.embedded .panel {
+  background: #1b2220;
+}
+.embedded .note {
+  background: #252e25;
+}
+.embedded .toolbar {
+  flex-wrap: wrap;
+}
+.embedded p {
+  font-size: 12px;
+  line-height: 2;
+  color: #adb9b0;
+}
+@media (max-width: 780px) {
+  .embedded .intro {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .embedded .columns {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 680px) {
+  .embedded .intro h1 {
+    font-size: 30px;
+  }
+  .embedded .main {
+    padding: 0;
+  }
+  .embedded .panel {
+    padding: 18px;
+  }
+}

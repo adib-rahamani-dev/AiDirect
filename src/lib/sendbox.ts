@@ -21,6 +21,7 @@ const account = z.object({
 export type SendboxAccount = z.infer<typeof account>;
 // Fixed provider origin: credentials must never follow a redirect or a user-supplied host.
 async function get(path: 'info' | 'accounts') {
+  if (process.env.SENDBOX_TEST_ENABLED !== 'true') throw new SendboxError('configuration');
   let response: Response;
   try {
     response = await fetch(`https://api.sendbox.chat/api/v1/service/${path}`, {

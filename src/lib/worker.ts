@@ -5,6 +5,7 @@ import { matches } from './matching';
 import { MetaError, metaAdapter, refreshToken, type InstagramAdapter } from './meta';
 import { simulatedAdapter } from './simulated';
 import { randomUUID } from 'node:crypto';
+import { drainInstagramWebhook } from './instagram-webhook';
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export async function tick(
   adapter: InstagramAdapter = provider() === 'meta' ? metaAdapter : simulatedAdapter,
@@ -273,6 +274,7 @@ export async function worker() {
         nextRefresh = Date.now() + 3600_000;
       }
       await tick();
+      await drainInstagramWebhook();
     } catch {
       console.error(JSON.stringify({ event: 'worker_iteration_failed' }));
     }

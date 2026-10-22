@@ -125,6 +125,21 @@ export async function analyticsSnapshot(userId: string, workspaceId: string, day
       const daily = await tx.$queryRaw<
         { day: string; count: number }[]
       >`SELECT to_char("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Tehran','YYYY-MM-DD') AS day,count(*)::int AS count FROM "CatalogProduct" WHERE "workspaceId"=${workspaceId} AND ("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Tehran')::date BETWEEN ${dates[0]}::date AND ${dates.at(-1)}::date GROUP BY day`;
+      const instagram = await tx.instagramConnection.findUnique({
+        where: { workspaceId },
+        select: { status: true, expiresAt: true },
+      });
+      const connected = instagram?.status === 'connected' && instagram.expiresAt > new Date();
+      const privateReplies = connected
+        ? await tx.instagramJob.count({
+            where: {
+              workspaceId,
+              kind: 'private_reply',
+              status: 'accepted',
+              createdAt: { gte: new Date(dates[0] + 'T00:00:00+03:30') },
+            },
+          })
+        : null;
       return {
         workspace,
         generatedAt: new Date().toISOString(),
@@ -139,9 +154,9 @@ export async function analyticsSnapshot(userId: string, workspaceId: string, day
         categories,
         suggestions: catalogSuggestions(metrics, workspace.paused),
         messaging: {
-          status: 'not_connected' as const,
+          status: connected ? ('connected' as const) : ('not_connected' as const),
           comments: null,
-          privateReplies: null,
+          privateReplies,
           orders: null,
           revenueToman: null,
           conversionRate: null,

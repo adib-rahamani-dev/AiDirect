@@ -5,8 +5,10 @@ import { exchangeCode, profile } from '@/lib/meta';
 import { db } from '@/lib/db';
 import { equal, hash, encrypt } from '@/lib/crypto';
 import { baseUrl } from '@/lib/config';
+import { CUSTOMER_META_COOKIE, finishInstagramOAuth } from '@/lib/instagram-connection';
 export const runtime = 'nodejs';
 export async function GET(request: Request) {
+  if ((await cookies()).has(CUSTOMER_META_COOKIE)) return finishInstagramOAuth(request);
   let result = 'oauth_failed';
   let destination = '/proof';
   try {

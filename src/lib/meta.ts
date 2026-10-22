@@ -188,6 +188,42 @@ export async function subscribe(accountId: string, token: string) {
   });
   if (result.success !== true) throw new MetaError('permanent');
 }
+export async function subscribeInstagramInbox(accountId: string, token: string) {
+  const result = await request(graph(`${accountId}/subscribed_apps`), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ subscribed_fields: 'comments,messages' }),
+  });
+  if (result.success !== true) throw new MetaError('permanent');
+}
+export async function sendInstagramMessage(
+  accountId: string,
+  recipientId: string,
+  text: string,
+  token: string,
+) {
+  if (
+    !/^\d{1,40}$/.test(accountId) ||
+    !/^\d{1,40}$/.test(recipientId) ||
+    !text ||
+    text.length > 1000
+  )
+    throw new MetaError('permanent');
+  const result = await request(
+    graph(`${accountId}/messages`),
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipient: { id: recipientId }, message: { text } }),
+    },
+    true,
+  );
+  if (typeof result.message_id !== 'string') throw new MetaError('unknown');
+  return { messageId: result.message_id };
+}
 export interface InstagramAdapter {
   kind: 'meta' | 'simulated';
   media(accountId: string, token: string): Promise<Media[]>;

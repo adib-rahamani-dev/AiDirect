@@ -1,4 +1,5 @@
 'use client';
+import DashboardShell from '../dashboard-shell';
 import { useRef, useState, type FormEvent } from 'react';
 import { Brand } from '../../ui';
 import styles from '../../admin/catalog/catalog.module.css';
@@ -54,8 +55,8 @@ export default function SettingsPanel() {
       setBusy(false);
     }
   }
-  return (
-    <div className={styles.shell}>
+  const content = (
+    <div className={styles.embedded}>
       <header className={styles.header}>
         <Brand />
         <nav aria-label="فضای فروشگاه">
@@ -67,7 +68,7 @@ export default function SettingsPanel() {
           </a>
         </nav>
       </header>
-      <main className={styles.main}>
+      <main className={styles.embeddedMain}>
         <h1>اختیار حساب، دست تو.</h1>
         <p role="status" className={styles.message}>
           {message}
@@ -161,5 +162,10 @@ export default function SettingsPanel() {
         </details>
       </main>
     </div>
+  );
+  return (
+    <DashboardShell active="تنظیمات" title="تنظیمات حساب">
+      {content}
+    </DashboardShell>
   );
 }

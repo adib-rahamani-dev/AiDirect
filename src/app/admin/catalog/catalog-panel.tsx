@@ -1,4 +1,5 @@
 'use client';
+import DashboardShell from '../../dashboard/dashboard-shell';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Brand } from '../../ui';
 import styles from './catalog.module.css';
@@ -127,21 +128,23 @@ export default function CatalogPanel({ customer = false }: { customer?: boolean 
       (p) => p.pageId === pageId && `${p.name} ${p.category}`.includes(query),
     ) ?? [];
   const pageProducts = data?.products.filter((p) => p.pageId === pageId) ?? [];
-  return (
-    <div className={styles.shell}>
-      <header className={styles.header}>
-        <Brand />
-        <nav aria-label="مدیریت">
-          <a href={customer ? '/dashboard' : '/admin'}>{customer ? 'پنل من' : 'نمای کلی'}</a>
-          <a href={customer ? '/dashboard/catalog' : '/admin/catalog'} aria-current="page">
-            محصولات
-          </a>
-          {!customer && <a href="/admin/operations">عملیات و گزارش</a>}
-          <a href={customer ? '/dashboard/analytics' : '/admin/analytics'}>آمار و تحلیل</a>
-          {customer && <a href="/dashboard/settings">تنظیمات حساب</a>}
-        </nav>
-      </header>
-      <main className={styles.main}>
+  const content = (
+    <div className={customer ? styles.embedded : styles.shell}>
+      {!customer && (
+        <header className={styles.header}>
+          <Brand />
+          <nav aria-label="مدیریت">
+            <a href={customer ? '/dashboard' : '/admin'}>{customer ? 'پنل من' : 'نمای کلی'}</a>
+            <a href={customer ? '/dashboard/catalog' : '/admin/catalog'} aria-current="page">
+              محصولات
+            </a>
+            {!customer && <a href="/admin/operations">عملیات و گزارش</a>}
+            <a href={customer ? '/dashboard/analytics' : '/admin/analytics'}>آمار و تحلیل</a>
+            {customer && <a href="/dashboard/settings">تنظیمات حساب</a>}
+          </nav>
+        </header>
+      )}
+      <main className={customer ? styles.embeddedMain : styles.main}>
         <div className={styles.intro}>
           <div>
             <span className={styles.eyebrow}>از محصول، تا پیشنهاد مناسب</span>
@@ -154,10 +157,11 @@ export default function CatalogPanel({ customer = false }: { customer?: boolean 
           </div>
           <div className={styles.note}>
             <span>حالت فعلی</span>
-            <strong>آزمایش کاتالوگ</strong>
+            <strong>منبع پاسخ‌گوی محصول</strong>
             <p>
-              پیشنهادها واقعی و بر اساس دادهٔ ذخیره‌شده‌اند. این بخش هنوز به دایرکت متصل نیست و
-              پیج‌های ثبت‌شده، اتصال تأییدشدهٔ اینستاگرام محسوب نمی‌شوند.
+              قیمت و موجودی از اطلاعات ذخیره‌شده خوانده می‌شوند. برای پاسخ دایرکت، پیج را از بخش
+              اینستاگرام متصل کن؛ نام پیج کاتالوگ باید با حساب متصل یکی باشد. ساخت پیج کاتالوگ
+              به‌تنهایی اتصال رسمی نیست.
             </p>
           </div>
         </div>
@@ -546,5 +550,12 @@ export default function CatalogPanel({ customer = false }: { customer?: boolean 
         )}
       </main>
     </div>
+  );
+  return customer ? (
+    <DashboardShell active="محصولات" title="ویترین محصولات">
+      {content}
+    </DashboardShell>
+  ) : (
+    content
   );
 }

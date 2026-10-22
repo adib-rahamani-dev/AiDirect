@@ -179,7 +179,139 @@ model Workspace {
   owner       User?         @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   memberships Membership[]
   pages       CatalogPage[]
+  instagram   InstagramConnection?
+  instagramOAuth InstagramOAuthAttempt[]
   createdAt   DateTime      @default(now())
+}
+
+// Direct Meta integration: each connection and every child row belong to one workspace.
+model InstagramConnection {
+  id String @id @default(cuid())
+  workspaceId String @unique
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accountId String @unique
+  appScopedId String
+  username String
+  tokenCipher String
+  status String @default("connected")
+  subscribed Boolean @default(false)
+  errorKind String?
+  issuedAt DateTime @default(now())
+  expiresAt DateTime
+  acceptSince DateTime @default(now())
+  autoDm Boolean @default(false)
+  tone String @default("friendly")
+  shippingPolicy String @default("")
+  shorthandMillions Boolean @default(false)
+  settingsRevision String @default(cuid())
+  nextSendAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  automations InstagramAutomation[]
+  threads InstagramThread[]
+  jobs InstagramJob[]
+  envelopes InstagramWebhookEnvelope[]
+  @@unique([id, workspaceId])
+}
+
+model InstagramWebhookEnvelope {
+  id String @id
+  workspaceId String
+  connectionId String
+  connection InstagramConnection @relation(fields: [connectionId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  payloadCipher String?
+  status String @default("pending")
+  attempts Int @default(0)
+  startedAt DateTime?
+  receivedAt DateTime @default(now())
+  expiresAt DateTime
+  @@index([status, receivedAt])
+}
+
+model InstagramOAuthAttempt {
+  stateHash String @id
+  workspaceId String
+  userId String
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+
+model InstagramAutomation {
+  id String @id @default(cuid())
+  workspaceId String
+  connectionId String
+  connection InstagramConnection @relation(fields: [connectionId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  mediaId String
+  keyword String
+  replyText String
+  link String
+  enabled Boolean @default(false)
+  revision String @default(cuid())
+  updatedAt DateTime @updatedAt
+  @@unique([connectionId, mediaId, keyword])
+  @@index([workspaceId])
+}
+
+model InstagramThread {
+  id String @id
+  workspaceId String
+  connectionId String
+  connection InstagramConnection @relation(fields: [connectionId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  senderCipher String
+  lastInboundAt DateTime
+  lastMessageAt DateTime
+  handedOff Boolean @default(false)
+  contextCipher String?
+  contextAt DateTime?
+  lastProcessedInboundAt DateTime?
+  leaseToken String?
+  leaseUntil DateTime?
+  messages InstagramMessage[]
+  jobs InstagramJob[]
+  @@unique([id, workspaceId])
+  @@index([workspaceId, lastMessageAt])
+}
+
+model InstagramMessage {
+  id String @id
+  workspaceId String
+  threadId String
+  thread InstagramThread @relation(fields: [threadId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  direction String
+  textCipher String?
+  intent String @default("unclassified")
+  receivedAt DateTime @default(now())
+  expiresAt DateTime
+  @@index([workspaceId, threadId, receivedAt])
+  @@index([expiresAt])
+}
+
+model InstagramJob {
+  id String @id @default(cuid())
+  dedupeKey String @unique
+  workspaceId String
+  connectionId String
+  connection InstagramConnection @relation(fields: [connectionId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  threadId String?
+  thread InstagramThread? @relation(fields: [threadId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  kind String
+  automationId String?
+  revision String?
+  payloadCipher String?
+  status String @default("pending")
+  attempts Int @default(0)
+  leaseToken String?
+  leaseUntil DateTime?
+  nextAttemptAt DateTime @default(now())
+  expiresAt DateTime
+  errorKind String?
+  messageId String?
+  intent String @default("unclassified")
+  resultKind String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, nextAttemptAt])
+  @@index([workspaceId, createdAt])
 }
 
 enum WorkspaceRole {

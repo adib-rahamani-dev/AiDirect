@@ -26,10 +26,11 @@ const env = {
   META_ADAPTER: 'simulated',
   REAL_SEND_ENABLED: 'false',
   AUTOMATION_ENABLED: 'true',
+  SENDBOX_TEST_ENABLED: 'true',
 };
 for (const args of [
   ['node_modules/prisma/build/index.js', 'migrate', 'deploy'],
-  ['--import', 'tsx', '--test', 'tests/*.test.ts'],
+  ['--import', 'tsx', '--test', '--test-concurrency=1', 'tests/*.test.ts'],
 ]) {
   const result = spawnSync(process.execPath, args, { env, stdio: 'inherit' });
   if (result.status !== 0) process.exit(result.status ?? 1);

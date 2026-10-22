@@ -64,7 +64,7 @@ export default function SettingsPanel() {
         <div className={styles.columns}>
           <section className={styles.panel}>
             <h2>تغییر رمز عبور</h2>
-            <form className={styles.form} onSubmit={(e) => void submit(e)}>
+            <form method="post" className={styles.form} onSubmit={(e) => void submit(e)}>
               <fieldset disabled={busy}>
                 <label>
                   رمز فعلی
@@ -128,7 +128,7 @@ export default function SettingsPanel() {
             پشتیبان‌ها تابع روند جداگانه‌اند. حذف محلی، پیام ارسال‌شده در Instagram را پس نمی‌گیرد؛
             مجوز اپ را در خود Instagram هم لغو کن.
           </p>
-          <form className={styles.form} onSubmit={(e) => void submit(e, true)}>
+          <form method="post" className={styles.form} onSubmit={(e) => void submit(e, true)}>
             <fieldset disabled={busy}>
               <label>
                 برای تأیید بنویس «حذف حساب»

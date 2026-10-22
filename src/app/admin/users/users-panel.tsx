@@ -362,7 +362,7 @@ export default function UsersPanel() {
             setChange(null);
           }}
         >
-          <form onSubmit={mutate}>
+          <form method="post" onSubmit={mutate}>
             <h2 id="admin-confirm-title">تأیید تغییر دسترسی</h2>
             {message && <p role="alert">{message}</p>}
             <p>حساب: {change?.user.name}</p>

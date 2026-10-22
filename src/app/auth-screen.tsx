@@ -82,7 +82,7 @@ export default function AuthScreen({ mode = 'login' }: { mode?: 'login' | 'signu
             : 'با حساب AiDirect وارد شو؛ پنل مناسب سطح دسترسی‌ات باز می‌شود.'}
         </p>
       </div>
-      <form className="access-form" onSubmit={submit} aria-busy={busy}>
+      <form method="post" className="access-form" onSubmit={submit} aria-busy={busy}>
         <fieldset
           disabled={busy}
           style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: 'grid', gap: 20 }}

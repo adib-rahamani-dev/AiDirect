@@ -82,7 +82,7 @@ export default function LoginScreen({
         </h1>
         <p>با حساب AiDirect وارد شو و پیجت را متصل کن.</p>
       </div>
-      <form className="access-form" onSubmit={login} aria-busy={pending}>
+      <form method="post" className="access-form" onSubmit={login} aria-busy={pending}>
         {message && (
           <div className="access-feedback" role="alert" tabIndex={-1} ref={messageRef}>
             {message}

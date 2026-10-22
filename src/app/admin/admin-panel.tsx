@@ -295,7 +295,11 @@ export default function AdminPanel() {
                 href={data?.configured ? '/api/sendbox/connect' : '/connect/instagram'}
               >
                 <InstagramLogoIcon aria-hidden="true" size={22} />
-                {connected ? 'ورود دوباره به اینستاگرام' : 'اتصال اینستاگرام'}
+                {connected ? 'ورود دوباره از سرویس آزمایشی' : 'اتصال از سرویس آزمایشی'}
+              </a>
+              <a className={styles.darkOutline} href="/connect">
+                <InstagramLogoIcon aria-hidden="true" size={21} />
+                اتصال مستقیم متا
               </a>
               <button
                 className={styles.darkOutline}

@@ -57,15 +57,19 @@ export default function ConnectPage() {
     <div className="connect-page">
       <header className="auth-header">
         <Brand />
-        <span className="pill">دعوت اختصاصی</span>
+        <span className="pill">اتصال مستقیم متا</span>
       </header>
       <main className="connect-card">
         <span className="card-symbol">◎</span>
-        <span className="eyebrow">اتصال آزمایشی یک پیج</span>
+        <span className="eyebrow">اپ رسمی AiDirect · آزمایش یک پیج</span>
         <h1>پیجت را امن متصل کن.</h1>
         <p>
           با این دعوت، به AiDirect اجازه می‌دهی برای آزمایش کامنت به پاسخ خصوصی به پیج حرفه‌ای تو
           متصل شود. ورود و انتخاب حساب در سایت رسمی Instagram انجام می‌شود.
+        </p>
+        <p className="helper">
+          این مسیر مستقیماً از اپ متای AiDirect استفاده می‌کند. تا تکمیل بررسی متا، دسترسی عمومی
+          مشتری‌ها فعال نیست. اتصال حساب به معنی فعال‌شدن دایرکت، انتشار محتوا یا پاسخ خودکار نیست.
         </p>
         <ul className="connect-checks">
           <li>مالک یا مدیر مجاز پیج باش.</li>
@@ -98,7 +102,10 @@ export default function ConnectPage() {
               {busy ? 'در حال بررسی دعوت…' : 'پذیرش دعوت و آماده‌سازی اتصال ←'}
             </button>
           ) : (
-            <p className="mode-note">برای شروع، لینک خصوصی دعوت را از دعوت‌کننده بگیر.</p>
+            <div className="mode-note">
+              <p>برای شروع، لینک خصوصی دعوت مخصوص متا را از دعوت‌کننده بگیر.</p>
+              <a href="/admin">مدیر AiDirect هستی؟ وارد پنل شو و به این صفحه برگرد.</a>
+            </div>
           ))}
         <LegalLinks />
       </main>

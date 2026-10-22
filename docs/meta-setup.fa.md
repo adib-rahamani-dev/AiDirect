@@ -138,3 +138,12 @@ AUTOMATION_ENABLED=false
 | accepted ولی پیام دیده نمی‌شود     | Inbox/Requests گیرنده؛ accepted را delivered/seen اعلام نکنید               |
 | unknown                            | قرنطینه؛ retry دستی/خودکار ندارد. آزمون بعدی با کامنت جدید                  |
 | health 503 و worker missing        | ترمینال دوم worker، اتصال DB و provider یکسان وب/worker                     |
+
+## اتصال اپ جدید متا — ۲۲ اکتبر ۲۰۲۶
+
+- اپ اصلی متا `1435699572084613` و Instagram App ID آن `4686804761553399` هستند؛ این دو شناسه با هم فرق دارند. Secretها فقط در تنظیم خصوصی سرور نگهداری می‌شوند.
+- Redirect رسمی `https://aidirect-kappa.vercel.app/api/meta/callback` در Business login اپ ذخیره شد. endpoint وبهوک `/api/meta/webhook` با Verify Token یکسان با سرور ثبت شد؛ نمایش Webhook fields در پنل، پس از Verify and save مشاهده شد. این مرحله تأیید دریافت کامنت/دایرکت واقعی یک پیج نیست.
+- تنظیم سرور به adapter متا تغییر می‌کند؛ `REAL_SEND_ENABLED=false` و `AUTOMATION_ENABLED=false` حفظ می‌شوند. درخواست OAuth فعلاً فقط basic، manage_comments و manage_messages است؛ انتشار محتوا و insights به این پیاده‌سازی وصل نیستند.
+- مسیر مستقیم سایت `/connect` است و در پنل مدیر و صفحهٔ اتصال سرویس آزمایشی لینک مشخص دارد. فقط مدیر یا دارندهٔ دعوت خصوصی مخصوص متا می‌تواند OAuth را شروع کند؛ این نسخه هنوز اتصال مستقل چندمشتری نیست. `/connect/instagram` همچنان مسیر آزمایش BoxAPI است.
+- نبود پیج حرفه‌ای مجاز، مانع آزمون کامل OAuth و پیام واقعی است. حساب Facebook سازندهٔ اپ لازم نیست حساب Instagram داشته باشد. قبل از Advanced Access/App Review، نقش و شرایط تست حساب Instagram باید تکمیل شود.
+- callback خودکار قطع دسترسی و حذف داده هنوز پیاده نشده‌اند؛ آدرس ساختگی در تنظیمات متا درج نشده است. اپ برای عرضهٔ عمومی آماده نیست. ثبت callback یا نمایش صفحهٔ ورود Instagram، تأیید App Review یا مدرک ارسال پیام نیست.

@@ -144,7 +144,7 @@ export default function CatalogPanel({ customer = false }: { customer?: boolean 
           </nav>
         </header>
       )}
-      <main className={customer ? styles.embeddedMain : styles.main}>
+      <div className={customer ? styles.embeddedMain : styles.main}>
         <div className={styles.intro}>
           <div>
             <span className={styles.eyebrow}>از محصول، تا پیشنهاد مناسب</span>
@@ -548,7 +548,7 @@ export default function CatalogPanel({ customer = false }: { customer?: boolean 
             </details>
           </>
         )}
-      </main>
+      </div>
     </div>
   );
   return customer ? (

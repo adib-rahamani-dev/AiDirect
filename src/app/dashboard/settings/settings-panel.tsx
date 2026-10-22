@@ -1,7 +1,6 @@
 'use client';
 import DashboardShell from '../dashboard-shell';
 import { useRef, useState, type FormEvent } from 'react';
-import { Brand } from '../../ui';
 import styles from '../../admin/catalog/catalog.module.css';
 export default function SettingsPanel() {
   const [message, setMessage] = useState(''),
@@ -57,18 +56,7 @@ export default function SettingsPanel() {
   }
   const content = (
     <div className={styles.embedded}>
-      <header className={styles.header}>
-        <Brand />
-        <nav aria-label="فضای فروشگاه">
-          <a href="/dashboard">پنل من</a>
-          <a href="/dashboard/catalog">محصولات</a>
-          <a href="/dashboard/analytics">آمار و تحلیل</a>
-          <a href="/dashboard/settings" aria-current="page">
-            تنظیمات حساب
-          </a>
-        </nav>
-      </header>
-      <main className={styles.embeddedMain}>
+      <section className={styles.embeddedMain}>
         <h1>اختیار حساب، دست تو.</h1>
         <p role="status" className={styles.message}>
           {message}
@@ -135,9 +123,10 @@ export default function SettingsPanel() {
         <details className={styles.danger}>
           <summary>حذف حساب و کاتالوگ من</summary>
           <p>
-            حساب، نشست‌ها، فضای کاری متعلق به تو و محصولات و ارتباط پست‌های آن حذف می‌شوند. این کار
-            قابل برگشت از داخل پنل نیست. داده‌های مستقل سرویس‌های بیرونی و پشتیبان‌ها تابع روند
-            جداگانه‌اند؛ در حال حاضر این پنل اتصال Instagram مستقلی ندارد.
+            حساب، نشست‌ها، فضای کاری، اتصال Instagram، پیام‌های ذخیره‌شده، محصولات و قوانین حذف
+            می‌شوند. این کار قابل برگشت از داخل پنل نیست. داده‌های مستقل سرویس‌های بیرونی و
+            پشتیبان‌ها تابع روند جداگانه‌اند. حذف محلی، پیام ارسال‌شده در Instagram را پس نمی‌گیرد؛
+            مجوز اپ را در خود Instagram هم لغو کن.
           </p>
           <form className={styles.form} onSubmit={(e) => void submit(e, true)}>
             <fieldset disabled={busy}>
@@ -160,7 +149,7 @@ export default function SettingsPanel() {
             </fieldset>
           </form>
         </details>
-      </main>
+      </section>
     </div>
   );
   return (

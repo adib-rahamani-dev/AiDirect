@@ -102,7 +102,7 @@ export default function AnalyticsPanel({ customer = false }: { customer?: boolea
           </nav>
         </header>
       )}
-      <main className={customer ? base.embeddedMain : base.main} aria-busy={loading}>
+      <div className={customer ? base.embeddedMain : base.main} aria-busy={loading}>
         <div className={base.intro}>
           <div>
             <span className={base.eyebrow}>آمار روشن، تصمیم آگاهانه</span>
@@ -403,7 +403,7 @@ export default function AnalyticsPanel({ customer = false }: { customer?: boolea
             </section>
           </>
         )}
-      </main>
+      </div>
     </div>
   );
   return customer ? (

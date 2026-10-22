@@ -86,6 +86,27 @@ test('Cancelled OAuth exchange cannot reconnect; disconnected pages reject fresh
       'disconnected',
     );
   }));
+test('Automatic DM shares the daily workspace job cap with manual and comment responses', async () =>
+  fixture(async (c) => {
+    await db.instagramJob.createMany({
+      data: Array.from({ length: 100 }, (_, i) => ({
+        workspaceId: c.workspaceId,
+        connectionId: c.id,
+        dedupeKey: c.id + ':limit:' + i,
+        kind: 'private_reply',
+        status: 'failed',
+        expiresAt: new Date(Date.now() + 86400000),
+      })),
+    });
+    await ingestInstagram(dm(c.accountId, 'over-limit', 'سلام'));
+    assert.equal(
+      await db.instagramMessage.count({
+        where: { workspaceId: c.workspaceId, direction: 'inbound' },
+      }),
+      1,
+    );
+    assert.equal(await db.instagramJob.count({ where: { workspaceId: c.workspaceId } }), 100);
+  }));
 const transport = (reply: (text: string) => Promise<void> | void) => ({
   dm: async (account: string, sender: string, text: string) => {
     assert.match(account, /^\d+$/);

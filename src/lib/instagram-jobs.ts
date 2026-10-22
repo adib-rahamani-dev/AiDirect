@@ -166,7 +166,13 @@ export async function ingestInstagram(payload: unknown) {
           const minuteCount = await tx.instagramMessage.count({
             where: { threadId: tid, receivedAt: { gte: new Date(Date.now() - 60000) } },
           });
-          if (c.autoDm && !old?.handedOff && minuteCount <= 5) {
+          const dailyJobs = await tx.instagramJob.count({
+            where: {
+              workspaceId: c.workspaceId,
+              createdAt: { gte: new Date(Date.now() - 86400000) },
+            },
+          });
+          if (c.autoDm && !old?.handedOff && minuteCount <= 5 && dailyJobs < 100) {
             await queue(tx, {
               workspaceId: c.workspaceId,
               connectionId: c.id,

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import DashboardShell from '../dashboard-shell';
 import styles from '../dashboard.module.css';
+import InstagramInbox from './instagram-inbox';
 import type { AssistantConfig } from '@/lib/instagram-assistant';
 type Connection = {
   username: string;
@@ -60,7 +61,6 @@ type Snapshot = {
     budgets: Record<string, number>;
   };
 };
-type Message = { id: string; direction: string; receivedAt: string; text: string | null };
 type Media = { id: string; caption: string; media_product_type?: string };
 const endpoint = '/api/customer/instagram';
 const tabs = [
@@ -111,17 +111,11 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
-    [selected, setSelected] = useState(''),
-    [messages, setMessages] = useState<Message[]>([]),
-    [messageLoading, setMessageLoading] = useState(false),
-    [reply, setReply] = useState(''),
     [media, setMedia] = useState<Media[]>([]),
     [mediaLoading, setMediaLoading] = useState(false),
     [editing, setEditing] = useState<Rule | null>(null),
-    [formVersion, setFormVersion] = useState(0),
-    [messageRevision, setMessageRevision] = useState(0);
-  const pending = useRef(false),
-    nonce = useRef<{ thread: string; text: string; id: string } | null>(null);
+    [formVersion, setFormVersion] = useState(0);
+  const pending = useRef(false);
   const load = useCallback(async (signal?: AbortSignal) => {
     const r = await fetch(endpoint, {
       cache: 'no-store',
@@ -129,7 +123,6 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
     });
     if (!r.ok) throw Error();
     setData(await r.json());
-    setMessageRevision((v) => v + 1);
     setLoading(false);
   }, []);
   useEffect(() => {
@@ -164,34 +157,8 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
     });
     return () => c.abort();
   }, [load]);
-  useEffect(() => {
-    if (!selected) {
-      setMessages([]);
-      return;
-    }
-    const c = new AbortController();
-    setMessages([]);
-    setMessageLoading(true);
-    void fetch(endpoint + '?thread=' + encodeURIComponent(selected), {
-      cache: 'no-store',
-      signal: c.signal,
-    })
-      .then(async (r) => {
-        if (!r.ok) throw Error();
-        const value = await r.json();
-        setMessages(value.messages);
-      })
-      .catch(() => {
-        if (!c.signal.aborted) setNotice('پیام‌های این گفتگو دریافت نشد.');
-      })
-      .finally(() => {
-        if (!c.signal.aborted) setMessageLoading(false);
-      });
-    return () => c.abort();
-  }, [selected, messageRevision]);
   const connection = data?.connection,
-    connected = connection?.status === 'connected',
-    thread = data?.threads.find((t) => t.id === selected);
+    connected = connection?.status === 'connected';
   async function mutate(body: Record<string, unknown>) {
     if (pending.current) return false;
     pending.current = true;
@@ -280,17 +247,6 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
       },
     });
   }
-  async function sendReply(e: FormEvent) {
-    e.preventDefault();
-    const text = reply.trim();
-    if (!text || !selected) return;
-    if (nonce.current?.thread !== selected || nonce.current?.text !== text)
-      nonce.current = { thread: selected, text, id: crypto.randomUUID() };
-    if (await mutate({ action: 'reply', threadId: selected, text, requestId: nonce.current.id })) {
-      setReply('');
-      nonce.current = null;
-    }
-  }
   async function saveRule(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -313,56 +269,48 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
     <DashboardShell
       owner={owner}
       active={tab === 'inbox' ? 'صندوق پیام' : tab === 'automations' ? 'اتوماسیون' : 'اینستاگرام'}
-      title="اینستاگرام فروشگاه"
+      title={tab === 'inbox' ? 'صندوق پیام فروشگاه' : 'اینستاگرام فروشگاه'}
       subtitle="پیج تو، اپ رسمی متا، و کنترل روشن روی هر پاسخ."
     >
-      <section className={styles.hero}>
-        <div>
-          <span className={styles.eyebrow}>اتصال مستقیم · بدون واسطهٔ BoxAPI</span>
-          <h1 className={styles.heroTitle}>
-            {tab === 'inbox'
-              ? 'گفتگوها همین‌جا.'
-              : tab === 'automations'
-                ? 'یک کلمه، یک پاسخ.'
-                : 'پیجت را نزدیک‌تر کن.'}
-            <br />
-            <em>
-              {tab === 'inbox'
-                ? 'با اختیار خودت.'
-                : tab === 'automations'
-                  ? 'با اطلاعات خودت.'
-                  : 'رسمی و قابل‌کنترل.'}
-            </em>
-          </h1>
-          <p>
-            {connected
-              ? '@' + connection.username + ' به فضای همین فروشگاه متصل است.'
-              : 'با حساب حرفه‌ای وارد Instagram شو؛ رمز را اینجا دریافت نمی‌کنیم.'}
-          </p>
-        </div>
-        <aside className={styles.heroNote}>
-          <span className={`${styles.badge} ${!connected ? styles.badgeWarn : ''}`}>
-            {loading
-              ? 'در حال بررسی'
-              : connected
-                ? 'متصل به متا'
-                : connection?.status === 'expired'
-                  ? 'نیاز به ورود دوباره'
-                  : 'هنوز متصل نشده'}
-          </span>
-          <strong>
-            {connected
-              ? connection.subscribed
-                ? 'دریافت رویدادها فعال است.'
-                : 'یک قدم دیگر: دریافت رویدادها.'
-              : 'اول پیج، بعد پاسخ‌ها.'}
-          </strong>
-          <p>
-            ثبت‌نام سایت باز است. تا تأیید متا، اتصال حساب‌های خارج از نقش‌های تست ممکن است رد شود؛
-            این محدودیت را نمی‌توانیم دور بزنیم.
-          </p>
-        </aside>
-      </section>
+      {tab !== 'inbox' && (
+        <section className={styles.hero}>
+          <div>
+            <span className={styles.eyebrow}>اتصال مستقیم · بدون واسطهٔ BoxAPI</span>
+            <h1 className={styles.heroTitle}>
+              {tab === 'automations' ? 'یک کلمه، یک پاسخ.' : 'پیجت را نزدیک‌تر کن.'}
+              <br />
+              <em>{tab === 'automations' ? 'با اطلاعات خودت.' : 'رسمی و قابل‌کنترل.'}</em>
+            </h1>
+            <p>
+              {connected
+                ? '@' + connection.username + ' به فضای همین فروشگاه متصل است.'
+                : 'با حساب حرفه‌ای وارد Instagram شو؛ رمز را اینجا دریافت نمی‌کنیم.'}
+            </p>
+          </div>
+          <aside className={styles.heroNote}>
+            <span className={`${styles.badge} ${!connected ? styles.badgeWarn : ''}`}>
+              {loading
+                ? 'در حال بررسی'
+                : connected
+                  ? 'متصل به متا'
+                  : connection?.status === 'expired'
+                    ? 'نیاز به ورود دوباره'
+                    : 'هنوز متصل نشده'}
+            </span>
+            <strong>
+              {connected
+                ? connection.subscribed
+                  ? 'دریافت رویدادها فعال است.'
+                  : 'یک قدم دیگر: دریافت رویدادها.'
+                : 'اول پیج، بعد پاسخ‌ها.'}
+            </strong>
+            <p>
+              ثبت‌نام سایت باز است. تا تأیید متا، اتصال حساب‌های خارج از نقش‌های تست ممکن است رد
+              شود؛ این محدودیت را نمی‌توانیم دور بزنیم.
+            </p>
+          </aside>
+        </section>
+      )}
       {notice && (
         <p className={styles.notice} role="status">
           {notice}
@@ -628,122 +576,15 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
           </div>
         )}
         {tab === 'inbox' && (
-          <>
-            <div className={styles.sectionHead}>
-              <p className={styles.note}>
-                فقط پیام‌های تازه پس از اتصال و فعال‌کردن رویدادها؛ متن‌ها حداکثر ۷ روز نگهداری
-                می‌شوند.
-              </p>
-              <button
-                disabled={busy}
-                onClick={() => {
-                  void load().catch(() => setNotice('به‌روزرسانی کامل نشد.'));
-                  void mutate({ action: 'process' });
-                }}
-              >
-                به‌روزرسانی و پردازش صف
-              </button>
-            </div>
-            <div className={styles.chatGrid}>
-              <div className={styles.list}>
-                {data?.threads.length ? (
-                  data.threads.map((t, i) => (
-                    <button
-                      className={styles.threadButton}
-                      key={t.id}
-                      aria-pressed={selected === t.id}
-                      onClick={() => setSelected(t.id)}
-                    >
-                      <strong>
-                        گفتگو {number(i + 1)} {t.handedOff ? '· پاسخ انسانی' : ''}
-                      </strong>
-                      <small>{t.preview}</small>
-                      <small>{date(t.lastMessageAt)}</small>
-                    </button>
-                  ))
-                ) : (
-                  <div className={styles.empty}>
-                    <span>↗</span>هنوز گفتگویی دریافت نشده.
-                    <br />
-                    پیج را متصل کن و از یک حساب دیگر پیام تازه بفرست.
-                  </div>
-                )}
-              </div>
-              <section className={`${styles.card} ${styles.chat}`}>
-                {selected ? (
-                  <>
-                    <div className={styles.sectionHead}>
-                      <h2>{thread?.handedOff ? 'پاسخ انسانی فعال است' : 'گفتگوی مشتری'}</h2>
-                      <button
-                        disabled={busy}
-                        onClick={() =>
-                          void mutate({
-                            action: 'handoff',
-                            threadId: selected,
-                            paused: !thread?.handedOff,
-                          })
-                        }
-                      >
-                        {thread?.handedOff ? 'ادامهٔ پاسخ خودکار' : 'توقف ربات در این گفتگو'}
-                      </button>
-                    </div>
-                    <div className={styles.messages} aria-live="polite">
-                      {messageLoading ? (
-                        <p className={styles.skeleton}>دریافت پیام‌ها…</p>
-                      ) : (
-                        messages.map((m) => (
-                          <div
-                            key={m.id}
-                            className={`${styles.bubble} ${m.direction === 'outbound' ? styles.outbound : ''}`}
-                          >
-                            {m.text ?? 'متن این پیام طبق سیاست نگهداری پاک شده است.'}
-                            <small>
-                              {m.direction === 'outbound' ? 'پذیرفته‌شده توسط API · ' : ''}
-                              {date(m.receivedAt)}
-                            </small>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <form className={styles.composer} onSubmit={(e) => void sendReply(e)}>
-                      <label htmlFor="instagram-reply" className={styles.note}>
-                        پاسخ دستی؛ پاسخ‌گوی خودکار این گفتگو متوقف می‌شود.
-                      </label>
-                      <textarea
-                        id="instagram-reply"
-                        value={reply}
-                        onChange={(e) => setReply(e.target.value)}
-                        maxLength={900}
-                        placeholder="پاسخ تو به مشتری…"
-                        disabled={busy || !thread?.canReply || !data?.sendingEnabled}
-                      />
-                      <div className={styles.formActions}>
-                        <button
-                          className={styles.primary}
-                          disabled={
-                            busy || !reply.trim() || !thread?.canReply || !data?.sendingEnabled
-                          }
-                        >
-                          ثبت پاسخ در صف ↗
-                        </button>
-                      </div>
-                      {!thread?.canReply && (
-                        <p className={styles.note}>
-                          بازهٔ پاسخ آزمایشی ۲۳ساعته گذشته است. منتظر پیام تازهٔ مخاطب باش.
-                        </p>
-                      )}
-                    </form>
-                  </>
-                ) : (
-                  <div className={styles.empty}>
-                    <span>◎</span>یک گفتگو را انتخاب کن.
-                    <br />
-                    هر پاسخ، فقط برای مخاطب همان پیج ارسال می‌شود.
-                  </div>
-                )}
-              </section>
-            </div>
-          </>
+          <InstagramInbox
+            autoDm={connection?.autoDm ?? false}
+            sendingEnabled={data?.sendingEnabled ?? false}
+            quickReplies={[
+              ...(connection?.assistantConfig.faqs.map((f) => f.answer) ?? []),
+              ...(connection?.shippingPolicy ? [connection.shippingPolicy] : []),
+            ]}
+            onChanged={load}
+          />
         )}
         {tab === 'automations' && (
           <div className={styles.grid}>

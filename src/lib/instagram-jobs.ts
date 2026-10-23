@@ -1,7 +1,6 @@
-import { createHmac, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { db } from './db';
-import { required } from './config';
 import { customerSending } from './instagram-view';
 import type { Prisma } from '../generated/prisma/client';
 import { encrypt, decrypt } from './crypto';
@@ -12,10 +11,8 @@ import { extractDmNeed } from './dm-ai';
 import { assistantConfig, directAiAvailable } from './instagram-assistant';
 import { instagramToken, InstagramError } from './instagram-connection';
 import { metaAdapter, sendInstagramMessage, MetaError } from './meta';
-export const directHash = (value: string) =>
-  createHmac('sha256', required('TOKEN_ENCRYPTION_KEY'))
-    .update('instagram:' + value)
-    .digest('hex');
+import { directHash } from './instagram-ids';
+export { directHash } from './instagram-ids';
 const inbound = z.object({
   sender: z.object({ id: z.string().regex(/^\d{1,40}$/) }),
   recipient: z.object({ id: z.string().regex(/^\d{1,40}$/) }),
@@ -115,6 +112,7 @@ export async function ingestInstagram(payload: unknown) {
           where: {
             workspaceId: c.workspaceId,
             direction: 'inbound',
+            source: 'webhook',
             receivedAt: { gte: new Date(Date.now() - 86400000) },
           },
         });
@@ -136,7 +134,11 @@ export async function ingestInstagram(payload: unknown) {
           )
             continue;
           const mid = directHash('message:' + c.accountId + ':' + item.message.mid);
-          if (await tx.instagramMessage.findUnique({ where: { id: mid } })) continue;
+          const existingMessage = await tx.instagramMessage.findUnique({
+            where: { id: mid },
+            select: { source: true },
+          });
+          if (existingMessage && existingMessage.source !== 'history') continue;
           const tid = directHash('thread:' + c.accountId + ':' + item.sender.id),
             at = new Date(item.timestamp),
             old = await tx.instagramThread.findUnique({ where: { id: tid } });
@@ -155,8 +157,9 @@ export async function ingestInstagram(payload: unknown) {
               senderCipher: encrypt(item.sender.id, 'instagram-sender:' + tid),
             },
           });
-          await tx.instagramMessage.create({
-            data: {
+          await tx.instagramMessage.upsert({
+            where: { id: mid },
+            create: {
               id: mid,
               workspaceId: c.workspaceId,
               threadId: tid,
@@ -164,9 +167,18 @@ export async function ingestInstagram(payload: unknown) {
               textCipher: encrypt(item.message.text, 'instagram-message:' + mid),
               expiresAt: new Date(Date.now() + 7 * 86400000),
             },
+            update: {
+              source: 'webhook',
+              textCipher: encrypt(item.message.text, 'instagram-message:' + mid),
+              receivedAt: at,
+            },
           });
           const minuteCount = await tx.instagramMessage.count({
-            where: { threadId: tid, receivedAt: { gte: new Date(Date.now() - 60000) } },
+            where: {
+              threadId: tid,
+              source: { not: 'history' },
+              receivedAt: { gte: new Date(Date.now() - 60000) },
+            },
           });
           const dailyJobs = await tx.instagramJob.count({
             where: {
@@ -550,7 +562,7 @@ export async function tickInstagram(
           ? await transport.privateReply(c.accountId, payload.commentId!, text, token)
           : await transport.dm(c.accountId, recipient, text, token);
       if (thread) {
-        const id = directHash('outbound:' + job.id);
+        const id = directHash('message:' + c.accountId + ':' + outcome.messageId);
         await db.instagramMessage.upsert({
           where: { id },
           create: {
@@ -558,11 +570,12 @@ export async function tickInstagram(
             workspaceId: c.workspaceId,
             threadId: thread.id,
             direction: 'outbound',
+            source: 'api',
             textCipher: encrypt(text, 'instagram-message:' + id),
             intent,
             expiresAt: new Date(Date.now() + 7 * 86400000),
           },
-          update: {},
+          update: { source: 'api', intent },
         });
         await db.instagramThread.updateMany({
           where: { id: thread.id, leaseToken: lease },

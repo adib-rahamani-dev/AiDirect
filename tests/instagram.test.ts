@@ -13,6 +13,7 @@ if (new URL(process.env.DATABASE_URL!).pathname !== '/aidirect_test')
   throw Error('Isolated DB required');
 after(() => db.$disconnect());
 let serial = 0;
+let sentSequence = 0;
 async function fixture(
   run: (a: Awaited<ReturnType<typeof saveInstagramGrant>>, b: string) => Promise<void>,
 ) {
@@ -258,7 +259,7 @@ const transport = (reply: (text: string) => Promise<void> | void) => ({
     assert.match(account, /^\d+$/);
     assert.match(sender, /^\d+$/);
     await reply(text);
-    return { messageId: 'accepted-fixture' };
+    return { messageId: 'accepted-fixture-' + ++sentSequence };
   },
   privateReply: async () => ({ messageId: 'accepted-private-fixture' }),
 });

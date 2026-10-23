@@ -1,4 +1,5 @@
 import { apiVersion, callbackUrl, required, scopes } from './config';
+import { z } from 'zod';
 export type Media = {
   id: string;
   caption?: string;
@@ -66,21 +67,40 @@ export function classify(http: number, body: unknown, write = false): MetaError 
   return new MetaError(kind, e?.code, e?.error_subcode, e?.fbtrace_id);
 }
 type Json = Record<string, unknown>;
-async function request(url: URL | string, init: RequestInit = {}, write = false): Promise<Json> {
+async function request(
+  url: URL | string,
+  init: RequestInit = {},
+  write = false,
+  timeout = 15000,
+): Promise<Json> {
   let res: Response;
   try {
     res = await fetch(url, {
       ...init,
       redirect: 'error',
       cache: 'no-store',
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(timeout),
     });
   } catch {
     throw new MetaError(write ? 'unknown' : 'temporary');
   }
   let body: Json;
   try {
-    body = await res.json();
+    const reader = res.body?.getReader();
+    if (!reader) throw new Error('empty_response');
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    while (true) {
+      const part = await reader.read();
+      if (part.done) break;
+      size += part.value.byteLength;
+      if (size > 2_097_152) {
+        await reader.cancel();
+        throw new Error('response_too_large');
+      }
+      chunks.push(part.value);
+    }
+    body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
   } catch {
     throw new MetaError(write ? 'unknown' : 'temporary');
   }
@@ -223,6 +243,103 @@ export async function sendInstagramMessage(
   );
   if (typeof result.message_id !== 'string') throw new MetaError('unknown');
   return { messageId: result.message_id };
+}
+
+const opaqueId = z
+  .string()
+  .min(1)
+  .max(1000)
+  .refine((v) => !/[\x00-\x20\x7f?#]/.test(v) && v !== '.' && v !== '..');
+const inboxPerson = z.object({
+  id: z.string().regex(/^\d{1,40}$/),
+  username: z.string().max(100).optional(),
+});
+const historyMessage = z.object({
+  id: opaqueId,
+  created_time: z.string().max(60),
+  from: inboxPerson,
+  to: z.object({ data: z.array(inboxPerson).max(10) }),
+  message: z.string().max(10000).nullish(),
+});
+const inboxConversation = z.object({
+  id: opaqueId,
+  updated_time: z.string().max(60),
+  participants: z.object({ data: z.array(inboxPerson).max(10) }),
+  messages: z.object({ data: z.array(historyMessage).max(20) }).optional(),
+});
+function inboxObject(id: string, fields: string) {
+  opaqueId.parse(id);
+  const u = new URL(`https://graph.instagram.com/${apiVersion()}/${encodeURIComponent(id)}`);
+  u.searchParams.set('fields', fields);
+  return u;
+}
+export async function listInstagramConversations(accountId: string, token: string, after?: string) {
+  if (!/^\d{1,40}$/.test(accountId)) throw new MetaError('permanent');
+  const u = new URL(`https://graph.instagram.com/${apiVersion()}/${accountId}/conversations`);
+  u.searchParams.set('platform', 'instagram');
+  u.searchParams.set('limit', '10');
+  u.searchParams.set(
+    'fields',
+    'id,updated_time,participants,messages.limit(1){id,created_time,from,to,message}',
+  );
+  if (after) u.searchParams.set('after', z.string().min(1).max(2000).parse(after));
+  const r = await request(u, { headers: { Authorization: `Bearer ${token}` } }, false, 5000);
+  return z
+    .object({
+      data: z.array(inboxConversation).max(10),
+      paging: z
+        .object({
+          cursors: z.object({ after: z.string().max(2000).optional() }).optional(),
+          next: z.string().optional(),
+        })
+        .optional(),
+    })
+    .parse(r);
+}
+export async function listInstagramConversationMessages(conversationId: string, token: string) {
+  const r = await request(
+    inboxObject(conversationId, 'messages.limit(20){id,created_time,from,to,message}'),
+    { headers: { Authorization: `Bearer ${token}` } },
+    false,
+    5000,
+  );
+  return z
+    .object({
+      id: opaqueId,
+      messages: z.object({
+        data: z
+          .array(z.object({ id: opaqueId, created_time: z.string().max(60) }).passthrough())
+          .max(1000)
+          .transform((rows) =>
+            rows
+              .sort((a, b) => Date.parse(b.created_time) - Date.parse(a.created_time))
+              .slice(0, 20),
+          )
+          .pipe(z.array(historyMessage)),
+      }),
+    })
+    .parse(r);
+}
+export async function getInstagramConversation(conversationId: string, token: string) {
+  const r = await request(
+    inboxObject(
+      conversationId,
+      'id,participants,updated_time,messages.limit(1){id,created_time,from,to,message}',
+    ),
+    { headers: { Authorization: `Bearer ${token}` } },
+    false,
+    5000,
+  );
+  return inboxConversation.parse(r);
+}
+export async function getInstagramHistoryMessage(messageId: string, token: string) {
+  const r = await request(
+    inboxObject(messageId, 'id,created_time,from,to,message'),
+    { headers: { Authorization: `Bearer ${token}` } },
+    false,
+    5000,
+  );
+  return historyMessage.parse(r);
 }
 export interface InstagramAdapter {
   kind: 'meta' | 'simulated';

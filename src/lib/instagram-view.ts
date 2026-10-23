@@ -95,7 +95,7 @@ export async function instagramSnapshot(workspaceId: string) {
         },
       }),
       db.instagramMessage.count({
-        where: { workspaceId, direction: 'inbound', receivedAt: { gte: since } },
+        where: { workspaceId, direction: 'inbound', source: 'webhook', receivedAt: { gte: since } },
       }),
       db.instagramJob.count({
         where: { workspaceId, status: 'accepted', createdAt: { gte: since } },
@@ -137,34 +137,69 @@ export async function instagramSnapshot(workspaceId: string) {
     dmMetrics,
     sendingEnabled: customerSending(),
     accessMode: 'app_review_required_for_external_customers',
-    history: 'new_webhooks_only',
+    history: 'official_recent_history_and_saved_webhooks',
     worker: 'webhook_after_with_durable_database_and_manual_recovery',
     ai: 'local_first_optional_groq_with_sender_consent',
     aiAvailable: directAiAvailable(),
   };
 }
-export async function instagramThreadMessages(workspaceId: string, id: string) {
+export async function instagramThreadMessages(workspaceId: string, id: string, before?: string) {
   const thread = await db.instagramThread.findFirst({
     where: { id, workspaceId },
-    select: { id: true, handedOff: true, lastInboundAt: true },
+    select: {
+      id: true,
+      handedOff: true,
+      lastInboundAt: true,
+      contactUsername: true,
+      starred: true,
+      archived: true,
+      historySyncedAt: true,
+      remoteIdCipher: true,
+      noteCipher: true,
+    },
   });
   if (!thread) throw new InstagramError(404, 'not_found');
+  if (
+    before &&
+    !(await db.instagramMessage.findFirst({
+      where: { id: before, threadId: id, workspaceId },
+      select: { id: true },
+    }))
+  )
+    throw new InstagramError(404, 'not_found');
   const rows = await db.instagramMessage.findMany({
     where: { threadId: id, workspaceId },
-    orderBy: { receivedAt: 'desc' },
-    take: 60,
+    orderBy: [{ receivedAt: 'desc' }, { id: 'desc' }],
+    take: 61,
+    ...(before ? { cursor: { id: before }, skip: 1 } : {}),
   });
   return {
-    thread,
-    messages: rows.reverse().map((m) => ({
-      id: m.id,
-      direction: m.direction,
-      receivedAt: m.receivedAt,
-      intent: m.intent,
-      text:
-        m.textCipher && m.expiresAt > new Date()
-          ? decrypt(m.textCipher, 'instagram-message:' + m.id)
-          : null,
-    })),
+    thread: {
+      id: thread.id,
+      handedOff: thread.handedOff,
+      lastInboundAt: thread.lastInboundAt,
+      contactUsername: thread.contactUsername,
+      starred: thread.starred,
+      archived: thread.archived,
+      historySyncedAt: thread.historySyncedAt,
+      hasHistory: Boolean(thread.remoteIdCipher),
+      canReply: thread.lastInboundAt.getTime() + 23 * 3600000 > Date.now(),
+      note: thread.noteCipher ? decrypt(thread.noteCipher, 'instagram-note:' + thread.id) : '',
+    },
+    before: rows.length > 60 ? rows[59].id : null,
+    messages: rows
+      .slice(0, 60)
+      .reverse()
+      .map((m) => ({
+        id: m.id,
+        direction: m.direction,
+        receivedAt: m.receivedAt,
+        intent: m.intent,
+        source: m.source,
+        text:
+          m.textCipher && m.expiresAt > new Date()
+            ? decrypt(m.textCipher, 'instagram-message:' + m.id)
+            : null,
+      })),
   };
 }

@@ -101,6 +101,11 @@ export async function saveInstagramGrant(
       expiresAt: new Date(Date.now() + token.expiresIn * 1000),
       acceptSince: now,
       autoDm: false,
+      historyCursorCipher: null,
+      historyHasMore: true,
+      historySyncedAt: null,
+      historyLeaseToken: null,
+      historyLeaseUntil: null,
       settingsRevision: randomUUID(),
     };
     const connection = await tx.instagramConnection.upsert({
@@ -220,12 +225,29 @@ export async function disconnectInstagram(workspaceId: string) {
     await tx.$queryRaw`SELECT id FROM "Workspace" WHERE id=${workspaceId} FOR UPDATE`;
     await tx.instagramConnection.updateMany({
       where: { workspaceId },
-      data: { status: 'disconnected', tokenCipher: '', subscribed: false, autoDm: false },
+      data: {
+        status: 'disconnected',
+        tokenCipher: '',
+        subscribed: false,
+        autoDm: false,
+        historyCursorCipher: null,
+        historyLeaseToken: null,
+        historyLeaseUntil: null,
+        historySyncedAt: null,
+      },
     });
     await tx.instagramAutomation.updateMany({ where: { workspaceId }, data: { enabled: false } });
     await tx.instagramThread.updateMany({
       where: { workspaceId },
-      data: { senderCipher: '', contextCipher: null, handedOff: true },
+      data: {
+        senderCipher: '',
+        contextCipher: null,
+        handedOff: true,
+        contactUsername: null,
+        remoteIdCipher: null,
+        noteCipher: null,
+        historySyncedAt: null,
+      },
     });
     await tx.instagramMessage.updateMany({ where: { workspaceId }, data: { textCipher: null } });
     await tx.instagramWebhookEnvelope.updateMany({

@@ -21,6 +21,8 @@ import { randomUUID } from 'node:crypto';
 import { enqueueManualReply } from '@/lib/instagram-jobs';
 import { drainInstagramWebhook } from '@/lib/instagram-webhook';
 import { assistantConfigSchema } from '@/lib/instagram-assistant';
+import { instagramInbox, syncInstagramInbox, syncInstagramThread } from '@/lib/instagram-inbox';
+import { encrypt } from '@/lib/crypto';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 const id = z.string().min(1).max(100);
@@ -28,6 +30,25 @@ const input = z.discriminatedUnion('action', [
   z.object({ action: z.literal('subscribe') }).strict(),
   z.object({ action: z.literal('disconnect') }).strict(),
   z.object({ action: z.literal('process') }).strict(),
+  z.object({ action: z.literal('sync_history'), restart: z.boolean().default(false) }).strict(),
+  z.object({ action: z.literal('sync_thread'), threadId: id }).strict(),
+  z
+    .object({
+      action: z.literal('thread_state'),
+      threadId: id,
+      starred: z.boolean().optional(),
+      archived: z.boolean().optional(),
+      read: z.boolean().optional(),
+      note: z.string().trim().max(1000).optional(),
+    })
+    .strict()
+    .refine(
+      (d) =>
+        d.starred !== undefined ||
+        d.archived !== undefined ||
+        d.read !== undefined ||
+        d.note !== undefined,
+    ),
   z
     .object({
       action: z.literal('settings'),
@@ -76,11 +97,21 @@ export async function GET(request: Request) {
     const { workspace } = await instagramActor(request.headers);
     const query = new URL(request.url).searchParams;
     return Response.json(
-      query.get('view') === 'media'
-        ? { source: 'meta', media: await instagramMedia(workspace.id), limit: 100 }
-        : query.get('thread')
-          ? await instagramThreadMessages(workspace.id, id.parse(query.get('thread')))
-          : await instagramSnapshot(workspace.id),
+      query.get('view') === 'inbox'
+        ? await instagramInbox(workspace.id, {
+            q: query.get('q') ?? '',
+            filter: (query.get('filter') ?? 'all') as 'all',
+            cursor: query.get('cursor') ?? undefined,
+          })
+        : query.get('view') === 'media'
+          ? { source: 'meta', media: await instagramMedia(workspace.id), limit: 100 }
+          : query.get('thread')
+            ? await instagramThreadMessages(
+                workspace.id,
+                id.parse(query.get('thread')),
+                query.get('before') ? id.parse(query.get('before')) : undefined,
+              )
+            : await instagramSnapshot(workspace.id),
       { headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (e) {
@@ -94,6 +125,29 @@ export async function POST(request: Request) {
     const data = input.parse(await readJson(request, 16000));
     if (!(await consumeAuthLimit('instagram-write:' + workspace.id, 60, 30)).allowed)
       throw new InstagramError(429, 'wait');
+    if (data.action === 'sync_history')
+      return Response.json(await syncInstagramInbox(workspace.id, data.restart));
+    if (data.action === 'sync_thread')
+      return Response.json(await syncInstagramThread(workspace.id, data.threadId));
+    if (data.action === 'thread_state') {
+      const result = await db.instagramThread.updateMany({
+        where: { id: data.threadId, workspaceId: workspace.id },
+        data: {
+          ...(data.starred !== undefined ? { starred: data.starred } : {}),
+          ...(data.archived !== undefined ? { archived: data.archived } : {}),
+          ...(data.read !== undefined ? { lastReadAt: data.read ? new Date() : new Date(0) } : {}),
+          ...(data.note !== undefined
+            ? {
+                noteCipher: data.note
+                  ? encrypt(data.note, 'instagram-note:' + data.threadId)
+                  : null,
+              }
+            : {}),
+        },
+      });
+      if (!result.count) throw new InstagramError(404, 'not_found');
+      return Response.json({ ok: true });
+    }
     if (data.action === 'disconnect') {
       await disconnectInstagram(workspace.id);
       return Response.json({ ok: true, remoteRevocation: 'instagram_apps_and_websites_required' });

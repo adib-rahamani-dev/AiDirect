@@ -201,6 +201,11 @@ model InstagramConnection {
   acceptSince DateTime @default(now())
   autoDm Boolean @default(false)
   assistantConfig Json?
+  historyCursorCipher String?
+  historyHasMore Boolean @default(true)
+  historySyncedAt DateTime?
+  historyLeaseToken String?
+  historyLeaseUntil DateTime?
   tone String @default("friendly")
   shippingPolicy String @default("")
   shorthandMillions Boolean @default(false)
@@ -259,6 +264,13 @@ model InstagramThread {
   connectionId String
   connection InstagramConnection @relation(fields: [connectionId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
   senderCipher String
+  contactUsername String?
+  remoteIdCipher String?
+  historySyncedAt DateTime?
+  starred Boolean @default(false)
+  archived Boolean @default(false)
+  lastReadAt DateTime?
+  noteCipher String?
   lastInboundAt DateTime
   lastMessageAt DateTime
   handedOff Boolean @default(false)
@@ -271,6 +283,7 @@ model InstagramThread {
   jobs InstagramJob[]
   @@unique([id, workspaceId])
   @@index([workspaceId, lastMessageAt])
+  @@index([workspaceId, archived, lastMessageAt])
 }
 
 model InstagramMessage {
@@ -281,6 +294,7 @@ model InstagramMessage {
   direction String
   textCipher String?
   intent String @default("unclassified")
+  source String @default("webhook")
   receivedAt DateTime @default(now())
   expiresAt DateTime
   @@index([workspaceId, threadId, receivedAt])

@@ -20,6 +20,7 @@ import { consumeAuthLimit } from '@/lib/customer-auth';
 import { randomUUID } from 'node:crypto';
 import { enqueueManualReply } from '@/lib/instagram-jobs';
 import { drainInstagramWebhook } from '@/lib/instagram-webhook';
+import { assistantConfigSchema } from '@/lib/instagram-assistant';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 const id = z.string().min(1).max(100);
@@ -34,6 +35,7 @@ const input = z.discriminatedUnion('action', [
       tone: z.enum(['friendly', 'formal']),
       shippingPolicy: z.string().trim().max(600),
       shorthandMillions: z.boolean(),
+      assistant: assistantConfigSchema.optional(),
     })
     .strict(),
   z
@@ -89,7 +91,7 @@ export async function POST(request: Request) {
   try {
     requireOrigin(request);
     const { workspace } = await instagramActor(request.headers);
-    const data = input.parse(await readJson(request, 8000));
+    const data = input.parse(await readJson(request, 16000));
     if (!(await consumeAuthLimit('instagram-write:' + workspace.id, 60, 30)).allowed)
       throw new InstagramError(429, 'wait');
     if (data.action === 'disconnect') {
@@ -137,6 +139,7 @@ export async function POST(request: Request) {
           tone: data.tone,
           shippingPolicy: data.shippingPolicy,
           shorthandMillions: data.shorthandMillions,
+          ...(data.assistant ? { assistantConfig: data.assistant } : {}),
           settingsRevision: randomUUID(),
         },
       });
@@ -224,7 +227,9 @@ function failure(e: unknown) {
           ? e.code
           : e instanceof MetaError
             ? 'meta_' + e.kind
-            : 'request_failed',
+            : e instanceof z.ZodError
+              ? 'invalid_input'
+              : 'request_failed',
     },
     { status, headers: { 'Cache-Control': 'no-store' } },
   );

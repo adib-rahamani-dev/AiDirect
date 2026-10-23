@@ -8,6 +8,8 @@ import { encrypt, decrypt } from './crypto';
 import { parseComments } from './webhook';
 import { matches } from './matching';
 import { dialogueState, planDmReply } from './dm-dialogue';
+import { extractDmNeed } from './dm-ai';
+import { assistantConfig, directAiAvailable } from './instagram-assistant';
 import { instagramToken, InstagramError } from './instagram-connection';
 import { metaAdapter, sendInstagramMessage, MetaError } from './meta';
 export const directHash = (value: string) =>
@@ -469,10 +471,22 @@ export async function tickInstagram(
               tone: c.tone,
               shippingPolicy: c.shippingPolicy,
               shorthandMillions: c.shorthandMillions,
-              aiEnabled: false,
+              aiEnabled: assistantConfig(c.assistantConfig).aiEnabled && directAiAvailable(),
+              assistant: assistantConfig(c.assistantConfig),
             },
             state: prior,
             firstTurn: !prior,
+            seed: parseInt(job.dedupeKey.slice(0, 8), 16) || 0,
+            extractor: (text, categories) => extractDmNeed(text, categories, c.workspaceId),
+          });
+          await db.instagramJob.updateMany({
+            where: { id: job.id, leaseToken: lease },
+            data: {
+              interpretation: plan.interpretation,
+              aiAttempted: plan.aiAttempted,
+              aiSucceeded: plan.aiSucceeded,
+              budgetBucket: plan.budgetBucket,
+            },
           });
           text = plan.reply;
           intent = plan.intent;
@@ -567,7 +581,10 @@ export async function tickInstagram(
       }
       await db.instagramJob.updateMany({
         where: { id: job.id, leaseToken: lease },
-        data: { messageId: outcome.messageId },
+        data: {
+          messageId: outcome.messageId,
+          responseMs: Math.min(2147483647, Math.max(0, Date.now() - job.createdAt.getTime())),
+        },
       });
       await finish('accepted', null);
       processed++;

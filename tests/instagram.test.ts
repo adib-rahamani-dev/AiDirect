@@ -7,6 +7,8 @@ import { storeInstagramWebhook, drainInstagramWebhook } from '../src/lib/instagr
 import { instagramSnapshot, instagramThreadMessages } from '../src/lib/instagram-view';
 import { decrypt } from '../src/lib/crypto';
 import { MetaError, subscribeInstagramInbox, sendInstagramMessage } from '../src/lib/meta';
+import { assistantConfigSchema, assistantConfig } from '../src/lib/instagram-assistant';
+import { instagramDmMetrics } from '../src/lib/instagram-metrics';
 if (new URL(process.env.DATABASE_URL!).pathname !== '/aidirect_test')
   throw Error('Isolated DB required');
 after(() => db.$disconnect());
@@ -66,6 +68,150 @@ const dm = (account: string, mid: string, text: string, sender = '79991') => ({
     },
   ],
 });
+
+test('Assistant settings require explicit privacy acknowledgement and distinct normalized FAQ triggers', () => {
+  assert.equal(assistantConfig(null).aiEnabled, false);
+  assert.equal(assistantConfigSchema.safeParse({ aiEnabled: true }).success, false);
+  assert.equal(
+    assistantConfigSchema.safeParse({
+      faqs: [
+        { keyword: 'کفش', answer: 'الف' },
+        { keyword: 'كفش', answer: 'ب' },
+      ],
+    }).success,
+    false,
+  );
+  assert.equal(
+    assistantConfigSchema.safeParse({ faqs: [{ keyword: 'آدرس', answer: '' }] }).success,
+    false,
+  );
+  assert.equal(
+    assistantConfigSchema.safeParse({ aiEnabled: true, privacyAcknowledged: true }).success,
+    true,
+  );
+});
+
+test('Direct assistant answers approved FAQ locally and hands off before any FAQ or model answer', async () =>
+  fixture(async (c) => {
+    await db.instagramConnection.update({
+      where: { id: c.id },
+      data: {
+        assistantConfig: assistantConfigSchema.parse({
+          brandName: 'آبان',
+          welcomeText: 'خوش آمدی به آبان',
+          faqs: [{ keyword: 'آدرس', answer: 'آدرس ثبت‌شدهٔ فروشگاه' }],
+        }),
+      },
+    });
+    let replies: string[] = [];
+    for (const [mid, text] of [
+      ['hello', 'سلام'],
+      ['faq', 'آدرس فروشگاه کجاست؟'],
+      ['human', 'آدرس را از اپراتور بپرسم'],
+    ]) {
+      await ingestInstagram(dm(c.accountId, mid, text));
+      await unthrottle(c.id);
+      await tickInstagram(
+        c.workspaceId,
+        transport((text) => {
+          replies.push(text);
+        }),
+      );
+    }
+    assert.match(replies[0], /دستیار خودکار آبان/);
+    assert.match(replies[0], /خوش آمدی به آبان/);
+    assert.equal(replies[1], 'آدرس ثبت‌شدهٔ فروشگاه');
+    assert.match(replies[2], /متوقف/);
+    const metrics = await instagramDmMetrics(c.workspaceId);
+    assert.equal(metrics.analyzed, 3);
+    assert.equal(metrics.withoutAiPercent, 100);
+    assert.equal(metrics.handoffs, 1);
+    assert.equal((await instagramDmMetrics('foreign-workspace')).analyzed, 0);
+  }));
+
+test('Direct Meta model extraction needs store opt-in and sender consent and reports bounded, minimized use', async () =>
+  fixture(async (c) => {
+    const oldFetch = globalThis.fetch,
+      oldKey = process.env.GROQ_API_KEY,
+      oldDisabled = process.env.META_DM_AI_DISABLED;
+    process.env.GROQ_API_KEY = 'fixture-direct-ai-key';
+    delete process.env.META_DM_AI_DISABLED;
+    let calls = 0;
+    globalThis.fetch = async (url, init) => {
+      calls++;
+      assert.equal(String(url), 'https://api.groq.com/openai/v1/chat/completions');
+      const body = String(init?.body);
+      for (const privateValue of ['test@example.com', '79991', c.accountId, c.workspaceId])
+        assert.ok(!body.includes(privateValue));
+      return Response.json({
+        id: 'fixture',
+        object: 'chat.completion',
+        created: 1,
+        model: 'openai/gpt-oss-20b',
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: 'assistant',
+              content: JSON.stringify({
+                intent: 'recommendation',
+                categoryIndex: null,
+                confidence: 'high',
+              }),
+            },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      });
+    };
+    try {
+      let reply = '';
+      await db.instagramConnection.update({
+        where: { id: c.id },
+        data: {
+          assistantConfig: assistantConfigSchema.parse({
+            aiEnabled: true,
+            privacyAcknowledged: true,
+          }),
+        },
+      });
+      await ingestInstagram(
+        dm(c.accountId, 'before-consent', 'برای عکاسی در نور کم test@example.com'),
+      );
+      await tickInstagram(
+        c.workspaceId,
+        transport((t) => {
+          reply = t;
+        }),
+      );
+      assert.equal(calls, 0);
+      assert.match(reply, /Groq/);
+      await ingestInstagram(dm(c.accountId, 'consent', 'موافقم'));
+      await unthrottle(c.id);
+      await tickInstagram(
+        c.workspaceId,
+        transport((t) => {
+          reply = t;
+        }),
+      );
+      assert.equal(calls, 1);
+      assert.match(reply, /بودجه/);
+      const metrics = await instagramDmMetrics(c.workspaceId);
+      assert.equal(metrics.aiAttempted, 1);
+      assert.equal(metrics.aiSucceeded, 1);
+      assert.equal(metrics.withoutAiPercent, 50);
+      assert.equal(metrics.orders, null);
+      assert.equal(metrics.revenue, null);
+      assert.equal(metrics.conversionRate, null);
+    } finally {
+      globalThis.fetch = oldFetch;
+      if (oldKey === undefined) delete process.env.GROQ_API_KEY;
+      else process.env.GROQ_API_KEY = oldKey;
+      if (oldDisabled === undefined) delete process.env.META_DM_AI_DISABLED;
+      else process.env.META_DM_AI_DISABLED = oldDisabled;
+    }
+  }));
 test('Cancelled OAuth exchange cannot reconnect; disconnected pages reject fresh ingress', async () =>
   fixture(async (c) => {
     await disconnectInstagram(c.workspaceId);

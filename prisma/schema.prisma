@@ -200,6 +200,7 @@ model InstagramConnection {
   expiresAt DateTime
   acceptSince DateTime @default(now())
   autoDm Boolean @default(false)
+  assistantConfig Json?
   tone String @default("friendly")
   shippingPolicy String @default("")
   shorthandMillions Boolean @default(false)
@@ -308,6 +309,11 @@ model InstagramJob {
   messageId String?
   intent String @default("unclassified")
   resultKind String?
+  interpretation String @default("none")
+  aiAttempted Boolean @default(false)
+  aiSucceeded Boolean @default(false)
+  budgetBucket String?
+  responseMs Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([status, nextAttemptAt])

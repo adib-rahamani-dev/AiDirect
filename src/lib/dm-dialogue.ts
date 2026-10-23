@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { db } from './db';
-import { normalize } from './matching';
+import { normalize, matches } from './matching';
 import { latinDigits, parseBudget } from './recommendations';
+import type { AssistantConfig } from './instagram-assistant';
 
 export const dialogueState = z
   .object({
@@ -26,6 +27,7 @@ export type DialogueSettings = {
   shippingPolicy: string;
   shorthandMillions: boolean;
   aiEnabled: boolean;
+  assistant?: AssistantConfig;
 };
 type Product = {
   id: string;
@@ -170,10 +172,11 @@ export async function planDmReply(input: {
     aiAttempted = false,
     aiSucceeded = false;
   const friendly = settings.tone !== 'formal';
+  const brand = settings.assistant?.brandName;
   const lead = input.firstTurn
     ? friendly
-      ? 'سلام! من دستیار خودکار فروشگاهم 🙂\n'
-      : 'سلام. من دستیار خودکار فروشگاه هستم.\n'
+      ? `سلام! من دستیار خودکار ${brand || 'فروشگاهم'} 🙂\n`
+      : `سلام. من دستیار خودکار ${brand || 'فروشگاه'} هستم.\n`
     : '';
   const result = (
     reply: string,
@@ -253,9 +256,10 @@ export async function planDmReply(input: {
     );
   if (intent === 'greeting')
     return result(
-      friendly
-        ? 'خوش اومدی! دنبال چه محصولی هستی و حدود بودجه‌ات چقدره؟'
-        : 'خوش آمدید. چه محصولی و با چه حداکثر بودجه‌ای مدنظر دارید؟',
+      settings.assistant?.welcomeText ||
+        (friendly
+          ? 'خوش اومدی! دنبال چه محصولی هستی و حدود بودجه‌ات چقدره؟'
+          : 'خوش آمدید. چه محصولی و با چه حداکثر بودجه‌ای مدنظر دارید؟'),
       'greeting',
     );
   if (intent === 'thanks')
@@ -309,6 +313,13 @@ export async function planDmReply(input: {
     interpretation = interpretation === 'ai' ? 'ai' : 'context';
   if (intent === 'unknown' && categoryMatches.length === 1) intent = 'recommendation';
   if (intent === 'unknown') {
+    const matchingFaqs = settings.assistant?.faqs.filter((f) => matches(text, f.keyword)) ?? [];
+    if (matchingFaqs.length === 1) return result(matchingFaqs[0].answer, 'faq_answer');
+    if (matchingFaqs.length > 1)
+      return result(
+        'چند موضوع در پیامت دیدم؛ لطفاً هر سؤال را جدا بپرس تا دقیق پاسخ بدهم.',
+        'clarify',
+      );
     if (settings.aiEnabled && input.extractor && !aiAttempted) {
       state.pendingAiText = redactDm(text);
       return result(

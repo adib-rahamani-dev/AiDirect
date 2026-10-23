@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import DashboardShell from '../dashboard-shell';
 import styles from '../dashboard.module.css';
+import type { AssistantConfig } from '@/lib/instagram-assistant';
 type Connection = {
   username: string;
   status: string;
@@ -11,6 +12,7 @@ type Connection = {
   tone: string;
   shippingPolicy: string;
   shorthandMillions: boolean;
+  assistantConfig: AssistantConfig;
 };
 type Thread = {
   id: string;
@@ -45,6 +47,18 @@ type Snapshot = {
   automations: Rule[];
   stats: { received: number; accepted: number; unknown: number; noMatch: number };
   sendingEnabled: boolean;
+  aiAvailable: boolean;
+  dmMetrics: {
+    analyzed: number;
+    aiAttempted: number;
+    aiSucceeded: number;
+    withoutAiPercent: number | null;
+    handoffs: number;
+    noMatch: number;
+    averageAcceptanceMs: number | null;
+    intents: Record<string, number>;
+    budgets: Record<string, number>;
+  };
 };
 type Message = { id: string; direction: string; receivedAt: string; text: string | null };
 type Media = { id: string; caption: string; media_product_type?: string };
@@ -66,6 +80,8 @@ const statusNames: Record<string, string> = {
   expired: 'مهلت گذشته',
 };
 const errorNames: Record<string, string> = {
+  invalid_input:
+    'تنظیمات معتبر نیست؛ هر پاسخ آماده به عبارت و متن نیاز دارد. برای روشن‌کردن AI هم تأیید حریم خصوصی لازم است.',
   connection_required: 'اول یک پیج حرفه‌ای متصل کن.',
   workspace_paused: 'عملیات این فروشگاه متوقف شده است.',
   subscribe_or_enable_sending:
@@ -252,6 +268,16 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
       tone: f.get('tone'),
       shippingPolicy: f.get('shippingPolicy'),
       shorthandMillions: f.get('shorthandMillions') === 'on',
+      assistant: {
+        aiEnabled: f.get('aiEnabled') === 'on',
+        privacyAcknowledged: f.get('privacyAcknowledged') === 'on',
+        brandName: String(f.get('brandName') ?? ''),
+        welcomeText: String(f.get('welcomeText') ?? ''),
+        faqs: Array.from({ length: 5 }, (_, i) => ({
+          keyword: String(f.get(`faq-key-${i}`) ?? '').trim(),
+          answer: String(f.get(`faq-answer-${i}`) ?? '').trim(),
+        })).filter((f) => f.keyword || f.answer),
+      },
     });
   }
   async function sendReply(e: FormEvent) {
@@ -476,11 +502,30 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
                   connection?.username +
                   String(connection?.autoDm) +
                   connection?.tone +
-                  connection?.shippingPolicy
+                  connection?.shippingPolicy +
+                  JSON.stringify(connection?.assistantConfig)
                 }
                 onSubmit={(e) => void saveSettings(e)}
               >
                 <fieldset disabled={busy || !connected}>
+                  <label>
+                    نام فروشگاه در معرفی دستیار
+                    <input
+                      name="brandName"
+                      maxLength={60}
+                      defaultValue={connection?.assistantConfig.brandName ?? ''}
+                      placeholder="مثلاً فروشگاه آبان"
+                    />
+                  </label>
+                  <label>
+                    متن خوشامد
+                    <textarea
+                      name="welcomeText"
+                      maxLength={200}
+                      defaultValue={connection?.assistantConfig.welcomeText ?? ''}
+                      placeholder="خوش اومدی! دنبال چه محصولی هستی؟"
+                    />
+                  </label>
                   <label>
                     لحن پاسخ
                     <select name="tone" defaultValue={connection?.tone ?? 'friendly'}>
@@ -514,13 +559,65 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
                     />
                     پاسخ خودکار محصول به دایرکت‌های تازه روشن باشد.
                   </label>
+                  <details className={styles.connectionHelp}>
+                    <summary>پاسخ‌های تأییدشدهٔ فروشگاه</summary>
+                    <p className={styles.note}>
+                      برای سؤال‌های روشن، بدون مصرف AI جواب می‌دهیم. قیمت و موجودی را فقط در کاتالوگ
+                      ثبت کن. هر ردیف را کامل کن یا هر دو فیلد را خالی بگذار.
+                    </p>
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <div key={i} className={styles.form}>
+                        <label>
+                          عبارت سؤال {number(i + 1)}
+                          <input
+                            name={`faq-key-${i}`}
+                            maxLength={60}
+                            defaultValue={connection?.assistantConfig.faqs[i]?.keyword ?? ''}
+                            placeholder="مثلاً آدرس فروشگاه"
+                          />
+                        </label>
+                        <label>
+                          پاسخ تأییدشده
+                          <textarea
+                            name={`faq-answer-${i}`}
+                            maxLength={450}
+                            defaultValue={connection?.assistantConfig.faqs[i]?.answer ?? ''}
+                          />
+                        </label>
+                      </div>
+                    ))}
+                  </details>
+                  <label className={styles.check}>
+                    <input
+                      type="checkbox"
+                      name="aiEnabled"
+                      defaultChecked={connection?.assistantConfig.aiEnabled}
+                      disabled={!data?.aiAvailable}
+                    />
+                    تحلیل پیام‌های مبهم با Groq، پس از رضایت مخاطب
+                  </label>
+                  <label className={styles.check}>
+                    <input
+                      type="checkbox"
+                      name="privacyAcknowledged"
+                      defaultChecked={connection?.assistantConfig.privacyAcknowledged}
+                    />
+                    با پردازش بیرونی نسخهٔ کوتاه و پالایش‌شدهٔ پیام موافقم و حریم خصوصی فروشگاه را
+                    به مخاطب اطلاع می‌دهم.
+                  </label>
+                  {!data?.aiAvailable && (
+                    <p className={styles.note}>
+                      تحلیل بیرونی روی سرور آماده نیست؛ پاسخ محلی ادامه دارد.
+                    </p>
+                  )}
                   <button className={styles.primary}>ذخیره تنظیمات پاسخ</button>
                 </fieldset>
               </form>
               <p className={styles.privacyNote}>
                 پاسخ نخست، خودکاربودن دستیار را معرفی می‌کند. قیمت و موجودی از کاتالوگ همین پیج
-                خوانده می‌شوند؛ متن دایرکت در این مسیر به Groq ارسال نمی‌شود. درخواست اپراتور، پاسخ
-                خودکار آن گفتگو را متوقف می‌کند.
+                خوانده می‌شوند. AI پیش‌فرض خاموش است؛ پس از فعال‌سازی فروشگاه، برای تحلیل هر پیام
+                مبهم از مخاطب رضایت می‌گیریم. مدل فقط نیت و دسته را استخراج می‌کند و اختیار ساخت
+                قیمت ندارد. درخواست اپراتور، پاسخ خودکار آن گفتگو را متوقف می‌کند.
               </p>
               {!data?.sendingEnabled && (
                 <p className={styles.notice}>
@@ -798,6 +895,103 @@ export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
                   <small>۷ روز اخیر · دادهٔ همین فروشگاه</small>
                 </article>
               ))}
+            </section>
+            <section className={styles.card}>
+              <div className={styles.sectionHead}>
+                <h2>گفتگوها چه می‌گویند؟</h2>
+                <span className={styles.badge}>۷ روز اخیر</span>
+              </div>
+              <div className={styles.stats}>
+                {[
+                  [data?.dmMetrics.analyzed, 'پاسخ تحلیل‌شده'],
+                  [data?.dmMetrics.aiAttempted, 'تلاش AI'],
+                  [data?.dmMetrics.aiSucceeded, 'تحلیل موفق AI'],
+                  [data?.dmMetrics.handoffs, 'ارجاع به فروشنده'],
+                ].map(([v, label]) => (
+                  <article key={String(label)} className={styles.stat}>
+                    <span>{label}</span>
+                    <strong>{number(v as number | undefined)}</strong>
+                  </article>
+                ))}
+              </div>
+              <p className={styles.note}>
+                سهم پردازش بدون فراخوانی AI:{' '}
+                {data?.dmMetrics.withoutAiPercent == null
+                  ? 'هنوز داده‌ای نداریم'
+                  : number(data.dmMetrics.withoutAiPercent) + '٪'}{' '}
+                · میانگین زمان ثبت در صف تا پذیرش API:{' '}
+                {data?.dmMetrics.averageAcceptanceMs == null
+                  ? 'هنوز داده‌ای نداریم'
+                  : number(data.dmMetrics.averageAcceptanceMs) + ' میلی‌ثانیه'}
+              </p>
+              <div className={styles.formActions}>
+                {Object.entries(data?.dmMetrics.intents ?? {}).map(([intent, count]) => (
+                  <span className={styles.badge} key={intent}>
+                    {(
+                      {
+                        greeting: 'سلام',
+                        recommendation: 'درخواست محصول',
+                        price: 'قیمت',
+                        availability: 'موجودی',
+                        shipping: 'ارسال',
+                        human: 'اپراتور',
+                        thanks: 'تشکر',
+                        unknown: 'نامشخص',
+                      } as Record<string, string>
+                    )[intent] ?? intent}
+                    : {number(count)}
+                  </span>
+                ))}
+              </div>
+              <p className={styles.privacyNote}>
+                این اعداد، نیت و نتیجهٔ پردازش هستند؛ فروش یا نرخ تبدیل نیستند. ردیف‌های قدیمی فاقد
+                تحلیل، بدون داده حساب می‌شوند. خطای AI هم در تلاش‌ها ثبت می‌شود.
+              </p>
+              <h3>بودجه‌های مطرح‌شده</h3>
+              <div className={styles.formActions}>
+                {Object.entries(data?.dmMetrics.budgets ?? {}).map(([band, count]) => (
+                  <span className={styles.badge} key={band}>
+                    {(
+                      {
+                        up_to_1m: 'تا ۱ میلیون',
+                        '1m_to_10m': '۱ تا ۱۰ میلیون',
+                        '10m_to_30m': '۱۰ تا ۳۰ میلیون',
+                        '30m_to_100m': '۳۰ تا ۱۰۰ میلیون',
+                        over_100m: 'بیش از ۱۰۰ میلیون',
+                      } as Record<string, string>
+                    )[band] ?? band}{' '}
+                    تومان: {number(count)}
+                  </span>
+                ))}
+              </div>
+              <p className={styles.note}>
+                شمار پاسخ‌های تحلیل‌شده با بودجهٔ مشخص؛ تعداد افراد یکتا نیست. ادامهٔ همان گفتگو هم
+                می‌تواند دوباره شمرده شود.
+              </p>
+              <h3>پیشنهاد عملی بر اساس گزارش</h3>
+              {data?.dmMetrics.noMatch ? (
+                <p>
+                  {number(data.dmMetrics.noMatch)} پاسخ بدون محصول مناسب بوده؛ قیمت، موجودی و پوشش
+                  دسته‌های کاتالوگ را بررسی کن.
+                </p>
+              ) : null}
+              {data?.dmMetrics.handoffs ? (
+                <p>
+                  {number(data.dmMetrics.handoffs)} بار درخواست فروشنده ثبت شده؛ گفتگوهای متوقف‌شده
+                  را در صندوق پیام بررسی کن.
+                </p>
+              ) : null}
+              {data && data.dmMetrics.aiAttempted > data.dmMetrics.aiSucceeded ? (
+                <p>
+                  بخشی از تحلیل‌های AI موفق نبوده‌اند؛ تا بررسی، پاسخ‌های محلی و سؤال روشن‌کننده را
+                  مبنا قرار بده.
+                </p>
+              ) : null}
+              {!data?.dmMetrics.analyzed ? (
+                <p className={styles.note}>
+                  پس از ثبت پاسخ‌های تازه، پیشنهادها از دادهٔ همین فروشگاه ساخته می‌شوند.
+                </p>
+              ) : null}
             </section>
             <section className={styles.card}>
               <div className={styles.sectionHead}>

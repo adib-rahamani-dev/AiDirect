@@ -5,6 +5,8 @@ import { metaAdapter } from './meta';
 import { consumeAuthLimit } from './customer-auth';
 import { InstagramError } from './instagram-connection';
 import { provider } from './config';
+import { assistantConfig, directAiAvailable } from './instagram-assistant';
+import { instagramDmMetrics } from './instagram-metrics';
 export const customerSending = () =>
   provider() === 'meta' && process.env.META_CUSTOMER_SEND_ENABLED === 'true';
 export async function instagramMedia(workspaceId: string) {
@@ -23,7 +25,7 @@ export async function instagramMedia(workspaceId: string) {
 }
 export async function instagramSnapshot(workspaceId: string) {
   const since = new Date(Date.now() - 7 * 86400000);
-  const [connection, threads, jobs, automations, received, accepted, unknown, noMatch] =
+  const [connection, threads, jobs, automations, received, accepted, unknown, noMatch, dmMetrics] =
     await Promise.all([
       db.instagramConnection.findUnique({
         where: { workspaceId },
@@ -39,6 +41,7 @@ export async function instagramSnapshot(workspaceId: string) {
           tone: true,
           shippingPolicy: true,
           shorthandMillions: true,
+          assistantConfig: true,
         },
       }),
       db.instagramThread.findMany({
@@ -68,6 +71,11 @@ export async function instagramSnapshot(workspaceId: string) {
           errorKind: true,
           intent: true,
           resultKind: true,
+          interpretation: true,
+          aiAttempted: true,
+          aiSucceeded: true,
+          budgetBucket: true,
+          responseMs: true,
           attempts: true,
           createdAt: true,
           updatedAt: true,
@@ -98,6 +106,7 @@ export async function instagramSnapshot(workspaceId: string) {
       db.instagramJob.count({
         where: { workspaceId, resultKind: 'no_match', createdAt: { gte: since } },
       }),
+      instagramDmMetrics(workspaceId),
     ]);
   return {
     provider: 'meta',
@@ -107,6 +116,7 @@ export async function instagramSnapshot(workspaceId: string) {
     connection: connection
       ? {
           ...connection,
+          assistantConfig: assistantConfig(connection.assistantConfig),
           status:
             connection.status === 'connected' && connection.expiresAt <= new Date()
               ? 'expired'
@@ -124,11 +134,13 @@ export async function instagramSnapshot(workspaceId: string) {
     jobs,
     automations,
     stats: { periodDays: 7, received, accepted, unknown, noMatch, orders: null, revenue: null },
+    dmMetrics,
     sendingEnabled: customerSending(),
     accessMode: 'app_review_required_for_external_customers',
     history: 'new_webhooks_only',
     worker: 'webhook_after_with_durable_database_and_manual_recovery',
-    ai: 'local_catalog_rules',
+    ai: 'local_first_optional_groq_with_sender_consent',
+    aiAvailable: directAiAvailable(),
   };
 }
 export async function instagramThreadMessages(workspaceId: string, id: string) {

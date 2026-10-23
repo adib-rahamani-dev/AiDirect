@@ -105,9 +105,17 @@ const date = (v: string) =>
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(v));
-export default function InstagramPanel({ owner = false }: { owner?: boolean }) {
+export default function InstagramPanel({
+  owner = false,
+  initialTab,
+}: {
+  owner?: boolean;
+  initialTab?: string;
+}) {
   const [data, setData] = useState<Snapshot | null>(null),
-    [tab, setTab] = useState<Tab>('connection'),
+    [tab, setTab] = useState<Tab>(
+      tabs.some(([key]) => key === initialTab) ? (initialTab as Tab) : 'connection',
+    ),
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),

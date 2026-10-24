@@ -248,6 +248,12 @@ export default function InstagramPanel({
         privacyAcknowledged: f.get('privacyAcknowledged') === 'on',
         brandName: String(f.get('brandName') ?? ''),
         welcomeText: String(f.get('welcomeText') ?? ''),
+        businessHours: {
+          enabled: f.get('hoursEnabled') === 'on',
+          days: f.getAll('hoursDay').map(Number),
+          start: String(f.get('hoursStart') || '09:00'),
+          end: String(f.get('hoursEnd') || '21:00'),
+        },
         faqs: Array.from({ length: 5 }, (_, i) => ({
           keyword: String(f.get(`faq-key-${i}`) ?? '').trim(),
           answer: String(f.get(`faq-answer-${i}`) ?? '').trim(),
@@ -515,6 +521,68 @@ export default function InstagramPanel({
                     />
                     پاسخ خودکار محصول به دایرکت‌های تازه روشن باشد.
                   </label>
+                  <details className={styles.connectionHelp}>
+                    <summary>ساعات پاسخ‌گویی دستیار · ساعت تهران</summary>
+                    <p className={styles.note}>
+                      بیرون این ساعت‌ها پیام در صندوق ثبت می‌شود، ولی پاسخ خودکار دایرکت ساخته
+                      نمی‌شود و بعداً هم خودکار بازپخش نمی‌شود. پاسخ دستی و قوانین کامنت مستقل‌اند.
+                      بازهٔ شبانه می‌تواند از نیمه‌شب بگذرد؛ ساعت پایان جزو بازه نیست.
+                    </p>
+                    <label className={styles.check}>
+                      <input
+                        type="checkbox"
+                        name="hoursEnabled"
+                        defaultChecked={connection?.assistantConfig.businessHours.enabled ?? false}
+                      />
+                      پاسخ خودکار دایرکت فقط در این ساعت‌ها
+                    </label>
+                    <div className={styles.form}>
+                      <label>
+                        از ساعت
+                        <input
+                          type="time"
+                          name="hoursStart"
+                          defaultValue={connection?.assistantConfig.businessHours.start ?? '09:00'}
+                          required
+                        />
+                      </label>
+                      <label>
+                        تا ساعت
+                        <input
+                          type="time"
+                          name="hoursEnd"
+                          defaultValue={connection?.assistantConfig.businessHours.end ?? '21:00'}
+                          required
+                        />
+                      </label>
+                    </div>
+                    <fieldset>
+                      <legend>روز شروع بازه؛ حداقل یک روز انتخاب کن</legend>
+                      {[
+                        [6, 'شنبه'],
+                        [0, 'یکشنبه'],
+                        [1, 'دوشنبه'],
+                        [2, 'سه‌شنبه'],
+                        [3, 'چهارشنبه'],
+                        [4, 'پنجشنبه'],
+                        [5, 'جمعه'],
+                      ].map(([day, label]) => (
+                        <label className={styles.check} key={day}>
+                          <input
+                            type="checkbox"
+                            name="hoursDay"
+                            value={day}
+                            defaultChecked={
+                              connection?.assistantConfig.businessHours.days.includes(
+                                Number(day),
+                              ) ?? true
+                            }
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </fieldset>
+                  </details>
                   <details className={styles.connectionHelp}>
                     <summary>پاسخ‌های تأییدشدهٔ فروشگاه</summary>
                     <p className={styles.note}>

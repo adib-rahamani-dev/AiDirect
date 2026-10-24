@@ -12,6 +12,7 @@ import { assistantConfig, directAiAvailable } from './instagram-assistant';
 import { instagramToken, InstagramError } from './instagram-connection';
 import { metaAdapter, sendInstagramMessage, MetaError } from './meta';
 import { directHash } from './instagram-ids';
+import { withinBusinessHours } from './business-hours';
 export { directHash } from './instagram-ids';
 const inbound = z.object({
   sender: z.object({ id: z.string().regex(/^\d{1,40}$/) }),
@@ -186,7 +187,13 @@ export async function ingestInstagram(payload: unknown) {
               createdAt: { gte: new Date(Date.now() - 86400000) },
             },
           });
-          if (c.autoDm && !old?.handedOff && minuteCount <= 5 && dailyJobs < 100) {
+          if (
+            c.autoDm &&
+            !old?.handedOff &&
+            minuteCount <= 5 &&
+            dailyJobs < 100 &&
+            withinBusinessHours(assistantConfig(c.assistantConfig).businessHours)
+          ) {
             await queue(tx, {
               workspaceId: c.workspaceId,
               connectionId: c.id,
@@ -461,6 +468,8 @@ export async function tickInstagram(
           )
             throw new InstagramError(409, 'out_of_order');
           if (!c.autoDm || thread.handedOff) throw new InstagramError(409, 'human_handoff');
+          if (!withinBusinessHours(assistantConfig(c.assistantConfig).businessHours))
+            throw new InstagramError(409, 'outside_business_hours');
           const page = await db.catalogPage.findUnique({
             where: {
               workspaceId_handle: { workspaceId: c.workspaceId, handle: c.username.toLowerCase() },

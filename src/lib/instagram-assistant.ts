@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { normalize } from './matching';
+import { businessHoursSchema } from './business-hours';
 
 export const assistantConfigSchema = z
   .object({
@@ -7,6 +8,12 @@ export const assistantConfigSchema = z
     privacyAcknowledged: z.boolean().default(false),
     brandName: z.string().trim().max(60).default(''),
     welcomeText: z.string().trim().max(200).default(''),
+    businessHours: businessHoursSchema.default({
+      enabled: false,
+      days: [0, 1, 2, 3, 4, 5, 6],
+      start: '09:00',
+      end: '21:00',
+    }),
     faqs: z
       .array(
         z

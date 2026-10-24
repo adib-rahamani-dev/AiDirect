@@ -9,7 +9,23 @@ const links = [
   ['/dashboard/instagram?tab=automations', '⌘', 'اتوماسیون'],
   ['/dashboard/catalog', '▦', 'محصولات'],
   ['/dashboard/analytics', '◴', 'آمار و تحلیل'],
+  ['/dashboard/reports', '≡', 'گزارش ارسال‌ها'],
+  ['/dashboard/subscription', '◷', 'اشتراک و مصرف'],
+  ['/dashboard/features', '✧', 'امکانات'],
+  ['/dashboard/website-development', '◇', 'توسعه وب‌سایت'],
   ['/dashboard/settings', '⚙', 'تنظیمات'],
+] as const;
+const adminLinks = [
+  ['/admin', '◈', 'مرکز مدیریت'],
+  ['/admin/users', '♙', 'کاربران و دسترسی‌ها'],
+  ['/dashboard/instagram', '◎', 'اینستاگرام'],
+  ['/dashboard/instagram?tab=inbox', '↗', 'صندوق پیام'],
+  ['/dashboard/subscription', '◷', 'اشتراک و مصرف'],
+  ['/admin/catalog', '▦', 'محصولات'],
+  ['/admin/analytics', '◴', 'آمار و تحلیل'],
+  ['/dashboard/reports', '≡', 'گزارش ارسال‌ها'],
+  ['/dashboard/features', '✧', 'امکانات'],
+  ['/dashboard/website-development', '◇', 'توسعه وب‌سایت'],
 ] as const;
 export default function DashboardShell({
   children,
@@ -67,10 +83,11 @@ export default function DashboardShell({
         <Brand />
         <div className={styles.sideLabel}>میز کار فروشگاه</div>
         <nav aria-label="ناوبری فروشگاه">
-          {links.map(([href, icon, label]) => (
+          {(owner ? adminLinks : links).map(([href, icon, label]) => (
             <a href={target(href)} key={label} aria-current={active === label ? 'page' : undefined}>
               <span aria-hidden="true">{icon}</span>
               {label}
+              {label === 'توسعه وب‌سایت' && <small className={styles.soon}>به‌زودی</small>}
             </a>
           ))}
         </nav>
@@ -91,6 +108,21 @@ export default function DashboardShell({
           <a className={styles.support} href={owner ? '/admin' : '/dashboard/settings'}>
             حساب من <span>↖</span>
           </a>
+          <details className={styles.mobileMenu}>
+            <summary>همهٔ بخش‌ها ☰</summary>
+            <nav aria-label="همهٔ بخش‌های پنل">
+              {(owner ? adminLinks : links).map(([href, icon, label]) => (
+                <a
+                  key={label}
+                  href={target(href)}
+                  aria-current={active === label ? 'page' : undefined}
+                >
+                  <span aria-hidden="true">{icon}</span> {label}
+                  {label === 'توسعه وب‌سایت' ? ' · به‌زودی' : ''}
+                </a>
+              ))}
+            </nav>
+          </details>
         </header>
         <main className={styles.main}>
           <p className={styles.subtitle}>{subtitle}</p>
@@ -102,7 +134,7 @@ export default function DashboardShell({
           {children}
         </main>
         <nav className={styles.mobileNav} aria-label="ناوبری موبایل">
-          {links.slice(0, 5).map(([href, icon, label]) => (
+          {(owner ? adminLinks : links).slice(0, 5).map(([href, icon, label]) => (
             <a key={label} href={target(href)} aria-current={active === label ? 'page' : undefined}>
               <span aria-hidden="true">{icon}</span>
               {label}

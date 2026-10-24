@@ -92,6 +92,40 @@ test('Assistant settings require explicit privacy acknowledgement and distinct n
   );
 });
 
+test('Outside business hours inbound stays visible without auto jobs; worker rechecks hours before sending', async () =>
+  fixture(async (c) => {
+    const weekday = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Tehran',
+      weekday: 'short',
+    }).format(new Date());
+    const today = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekday);
+    const closed = assistantConfigSchema.parse({
+      businessHours: { enabled: true, days: [(today + 2) % 7], start: '00:00', end: '23:59' },
+    });
+    await db.instagramConnection.update({ where: { id: c.id }, data: { assistantConfig: closed } });
+    assert.equal(await ingestInstagram(dm(c.accountId, 'outside-hours', 'سلام')), 1);
+    assert.equal(await db.instagramMessage.count({ where: { workspaceId: c.workspaceId } }), 1);
+    assert.equal(await db.instagramJob.count({ where: { workspaceId: c.workspaceId } }), 0);
+    await db.instagramConnection.update({
+      where: { id: c.id },
+      data: { assistantConfig: assistantConfigSchema.parse({}) },
+    });
+    await ingestInstagram(dm(c.accountId, 'inside-hours', 'سلام'));
+    assert.equal(await db.instagramJob.count({ where: { workspaceId: c.workspaceId } }), 1);
+    await db.instagramConnection.update({ where: { id: c.id }, data: { assistantConfig: closed } });
+    let sent = 0;
+    await tickInstagram(
+      c.workspaceId,
+      transport(() => {
+        sent++;
+      }),
+    );
+    const job = await db.instagramJob.findFirstOrThrow({ where: { workspaceId: c.workspaceId } });
+    assert.equal(sent, 0);
+    assert.equal(job.status, 'skipped');
+    assert.equal(job.errorKind, 'outside_business_hours');
+  }));
+
 test('Direct assistant answers approved FAQ locally and hands off before any FAQ or model answer', async () =>
   fixture(async (c) => {
     await db.instagramConnection.update({

@@ -17,6 +17,7 @@ export async function GET(request: Request) {
         where: {
           workspaceId: workspace.id,
           direction: 'inbound',
+          source: 'webhook',
           receivedAt: { gte: new Date(Date.now() - 7 * 86400000) },
         },
       }),

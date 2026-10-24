@@ -8,6 +8,46 @@
   font-family: 'Estedad Variable', Vazirmatn, sans-serif;
   direction: rtl;
 }
+.mobileMenu {
+  display: none;
+  position: relative;
+  font-size: 11px;
+}
+.mobileMenu summary {
+  cursor: pointer;
+  padding: 12px;
+  border: 1px solid #465245;
+  border-radius: 10px;
+  list-style: none;
+}
+.mobileMenu nav {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  z-index: 50;
+  width: min(280px, 80vw);
+  max-height: 65dvh;
+  overflow: auto;
+  background: #19241d;
+  border: 1px solid #465245;
+  border-radius: 14px;
+  padding: 10px;
+  box-shadow: 0 20px 45px #0007;
+}
+.mobileMenu nav a {
+  display: block;
+  padding: 14px;
+  border-radius: 8px;
+}
+.mobileMenu nav a[aria-current] {
+  color: #f8d649;
+  background: #f8d64912;
+}
+@media (max-width: 760px) {
+  .mobileMenu {
+    display: block;
+  }
+}
 .connectionHelp {
   border: 1px solid #37443e;
   border-radius: 18px;
@@ -95,6 +135,14 @@
 .sidebar nav {
   display: grid;
   gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.soon {
+  font-size: 8px;
+  color: #c7c6a3;
+  margin-inline-start: auto;
+  white-space: nowrap;
 }
 .sidebar nav a {
   padding: 13px 15px;
